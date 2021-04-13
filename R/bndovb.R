@@ -56,6 +56,10 @@ bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1){
     stop("column names of main data do not exist.")
   }
 
+  if (length(ovar)>1){
+    stop("there are too many omitted variables.")
+  }
+
   # check if auxiliary dataset includes every independent regressor
   if ((sum(comvar%in%colnames(auxdat))<length(comvar)) | !(ovar%in%colnames(auxdat)) ){
     stop("auxiliary dataset does not contain every right-hand side regressor.")

@@ -40,6 +40,13 @@ variable, which makes the conditional CDF and quantile function
 univariate. The default method is 1, using parametric normal density
 assumption.
 
+When using ‘bndovbme’, the auxiliary data must contain noisy proxy
+variables for the omitted variable. A user should set the type of the
+proxy variables, ptype, to either 1 (continuous) or 2 (discrete). When
+proxy variables are continuous, the auxiliary data must contain at least
+2 proxy variables. When proxy variables are discrete, the auxiliary data
+must contain at least 3 proxy variables.
+
 ## Installation
 
 You can install a package **bndovb** using either CRAN or github.
@@ -67,6 +74,10 @@ coefficients by using both main data and auxiliary data.
 ``` r
 library(bndovb)
 #> Warning: replacing previous import 'MASS::select' by 'dplyr::select' when
+#> loading 'bndovb'
+#> Warning: replacing previous import 'maxLik::gradient' by 'pracma::gradient' when
+#> loading 'bndovb'
+#> Warning: replacing previous import 'maxLik::hessian' by 'pracma::hessian' when
 #> loading 'bndovb'
 #> Warning: replacing previous import 'dplyr::filter' by 'stats::filter' when
 #> loading 'bndovb'
@@ -114,18 +125,177 @@ maindat <- maindat[,c("x2","x3","y")]
 oout <- bndovb(maindat=maindat,auxdat=auxdat,depvar="y",ovar="x1",comvar=c("x2","x3"),method=1)
 print(oout)
 #> $hat_beta_l
-#>        con         x1         x2         x3 
-#>  1.9261145 -0.9231628  2.9851454  2.0125252 
+#>       con        x1        x2        x3 
+#>  2.007466 -1.053107  3.019898  2.002953 
 #> 
 #> $hat_beta_u
-#>      con       x1       x2       x3 
-#> 3.280312 1.059706 3.640417 2.664897
+#>       con        x1        x2        x3 
+#> 3.3280726 0.9589262 3.6943861 2.6797727
 
 # use "bndovb" function using nonparametric estimation of the CDF and quantile function (set method=2)
 # for nonparametric density estimator, the R package "np" was used. See Hayfield and Racine (2008), Li and Racine (2008), Li, Lin and Racine (2013)
 #### The next line takes very long because of large sample size. You can try using a smaller sample and run the next line.
 #oout <- bndovb(maindat=maindat,auxdat=auxdat,depvar="y",ovar="x1",comvar=c("x2","x3"),method=2)
 #print(oout)
+```
+
+## Example 2 : bndovbme (continuous proxy variables)
+
+The code below shows how to use a function ‘bndovbme’ when the auxiliary
+data does not contain the omitted variable but contain continuous proxy
+variables for the omitted variable. The code may take some time to run.
+
+``` r
+
+library(bndovb)
+library(MASS)
+library(dplyr)
+library(pracma)
+
+set.seed(210413)
+
+### continuous proxy variables
+
+# set DGP
+nu      <- 0.5   # sd of measurement errors in proxy variables
+beta    <- c(0,1,1,1) # true parameters in a regression model
+gamma   <- c(0,1,1) # parameters to generate correlation between covariates
+samsize <- c(6000)  # sample size
+mu      <- c(0,0,0,0) # average of covariates
+sigma   <- eye(4)
+
+#### simulate data
+A <- rbind( c(1,0,0,0), c(0,1,0,0), c(gamma[2],gamma[3],1,0), c(beta[3]+beta[2]*gamma[2],beta[4]+beta[2]*gamma[3], beta[2],1))
+B <- c(0,0,gamma[1],beta[1])
+mu2    <- A%*%mu + B
+sigma2 <- A%*%sigma%*%t(A)
+Sim     = 100         ;  # number of Monte Carlo simulations
+
+n=6000;na=3000;nb=3000
+simdata <- mvrnorm(n,mu=mu2,Sigma=sigma2)
+
+w1<-simdata[,1]
+w2<-simdata[,2]
+x <-simdata[,3]
+y <-simdata[,4]
+
+# main data
+w1_a <- w1[1:na]
+w2_a <- w2[1:na]
+x_a  <- x[ 1:na]
+y_a  <- y[ 1:na]
+
+# auxiliary data
+w1_b <- w1[(na+1):n]
+w2_b <- w2[(na+1):n]
+x_b  <- x[ (na+1):n]
+y_b  <- y[ (na+1):n]
+
+# generate continuous proxies
+z_b <- w2_b + cbind(rnorm(n-na,mean=0,sd=nu), rnorm(n-na,mean=0,sd=nu), rnorm(n-na,mean=0,sd=nu))
+
+# main data does not include a variable w2
+maindat <- data.frame(y=y_a,x=x_a,w1=w1_a)
+
+# auxiliary data does not include a dependent variable y 
+# auxiliary data contain three proxy variables for the omitted variable w2
+auxdat <- data.frame(x=x_b,w1=w1_b,z1=z_b[,1],z2=z_b[,2],z3=z_b[,3])
+
+
+# use 'bndovbme' function
+oout <- bndovbme(maindat=maindat,auxdat=auxdat,depvar=c("y"),pvar=c("z1","z2","z3"),ptype=1,comvar=c("x","w1"))
+print(oout)
+#> $hat_beta_l
+#>        con       ovar          x         w1 
+#> -0.1088494 -1.8486753  0.5523880 -0.4145403 
+#> 
+#> $hat_beta_u
+#>        con       ovar          x         w1 
+#> 0.01424201 1.72849667 2.39952764 1.40476280
+```
+
+## Example 3 : bndovbme (discrete proxy variables)
+
+The code below is similar to the Example 2 but assumes the proxy
+variables in auxiliary data are discrete. The code may take some time to
+run.
+
+``` r
+
+library(bndovb)
+library(MASS)
+library(dplyr)
+library(pracma)
+
+set.seed(210413)
+
+### discrete proxy variables
+# set DGP
+
+n=6000;na=3000;nb=3000
+mu2 <- c(0,0,0)
+Sigma2 <- rbind(c(1,0.5,0.5),c(0.5,1,0.5),c(0.5,0.5,1))
+
+simdata <- mvrnorm(n,mu=mu2,Sigma=Sigma2)
+# discretize
+simdata[,2] <- (simdata[,2]>0)+1
+
+beta    <- c(0,1,1,1) # true parameters to get bounds on
+
+# simulate a dependent variable
+y <- cbind(rep(1,n),simdata)%*%as.matrix(beta) + rnorm(n)
+
+w1<-simdata[,1]
+w2<-simdata[,2]
+x <-simdata[,3]
+
+# main data
+w1_a <- w1[1:na]
+w2_a <- w2[1:na]
+x_a  <- x[ 1:na]
+y_a  <- y[ 1:na]
+
+# auxiliary data
+w1_b <- w1[(na+1):n]
+w2_b <- w2[(na+1):n]
+x_b  <- x[ (na+1):n]
+y_b  <- y[ (na+1):n]
+
+# set measurement matrices for discrete proxy variables
+M_param <- list()
+M_param[[1]] <- rbind(c(0.9,0.1),c(0.1,0.9))
+M_param[[2]] <- rbind(c(0.9,0.1),c(0.1,0.9))
+M_param[[3]] <- rbind(c(0.9,0.1),c(0.1,0.9))
+
+CM_param <- list()
+CM_param[[1]] <- t(apply(M_param[[1]],1,cumsum))
+CM_param[[2]] <- t(apply(M_param[[2]],1,cumsum))
+CM_param[[3]] <- t(apply(M_param[[3]],1,cumsum))
+
+# simulate proxy variables
+z_b <- matrix(NA,nrow=nb,ncol=3)
+for (k in 1:nb){
+  for (l in 1:3){
+    z_b[k,l] <- which(runif(1)<CM_param[[l]][w2_b[k],])[1]
+  }
+}
+
+
+# main data
+maindat <- data.frame(y=y_a,x=x_a,w1=w1_a)
+# auxiliary data
+auxdat <- data.frame(x=x_b,w1=w1_b,z1=z_b[,1],z2=z_b[,2],z3=z_b[,3])
+
+# use 'bndovbme' function
+oout <- bndovbme(maindat=maindat,auxdat=auxdat,depvar=c("y"),pvar=c("z1","z2","z3"),ptype=2,comvar=c("x","w1"),sbar=2)
+print(oout)
+#> $hat_beta_l
+#>        con       ovar          x         w1 
+#> -1.1624776 -1.9791250  0.9362842  0.7931693 
+#> 
+#> $hat_beta_u
+#>      con     ovar        x       w1 
+#> 4.453464 1.766742 1.426545 1.269087
 ```
 
 ## Conclusion

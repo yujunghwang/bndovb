@@ -19,7 +19,9 @@ Imports:
 	stats,
 	utils,
 	MASS,
-	dplyr
+	dplyr,
+	factormodel,
+	maxLik
 Suggests: 
     knitr,
     rmarkdown
