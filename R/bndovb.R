@@ -2,13 +2,13 @@
 #' @description This function runs a two sample least squares when auxiliary data contains every right-hand side regressor
 #' and main data contains a dependent variable and every right-hand side regressor but one omitted variable.
 #' @author Yujung Hwang, \email{yujungghwang@gmail.com}
-#' @references Hwang, Yujung (2021). Bounding Omitted Variable Bias Using Auxiliary Data. Working Paper.
+#' @references \describe{
+#' \item{Hwang, Yujung (2021)}{Bounding Omitted Variable Bias Using Auxiliary Data. Working Paper.}}
 #' @importFrom utils install.packages
 #' @import stats
 #' @import np
-#' @import pracma
-#' @import dplyr
-#' @import MASS
+#' @importFrom pracma pinv eye
+#' @importFrom MASS mvrnorm
 #'
 #' @param maindat Main data set
 #' @param auxdat Auxiliary data set
@@ -17,16 +17,25 @@
 #' @param comvar A vector of common regressors existing in both main data and auxiliary data
 #' @param method CDF and Quantile function estimation method.
 #' Users can choose either 1 or 2. If the method is 1, the CDF and quantile function is estimated assuming a parametric normal distribution.
-#' If the method is 2, the CDF and quantile function is estimated using a nonparaemtric estimator in Li and Racine(2008), Li, Lin, and Racine(2013).
+#' If the method is 2, the CDF and quantile function is estimated using a nonparaemtric estimator in Li and Racine(2008) \doi{10.1198/073500107000000250}, Li, Lin, and Racine(2013) \doi{10.1080/07350015.2012.738955}.
 #' Default is 1.
+#' @param mainweights An optional weight vector for the main dataset. The vector length must be equal to the number of rows of 'maindat'
+#' @param auxweights An optional weight vector for the auxiliary dataset. The vector length must be equal to the number of rows of 'auxdat'
 #'
 #' @return Returns a list of 2 components : \describe{
 #' \item{hat_beta_l}{lower bound estimates of regression coefficients}
 #'
 #' \item{hat_beta_u}{upper bound estimates of regression coefficients}}
 #'
+#' @examples
+#' data(maindat_nome)
+#' data(auxdat_nome)
+#'
+#' bndovb(maindat=maindat_nome,auxdat=auxdat_nome,depvar="y",ovar="x1",comvar=c("x2","x3"),method=1)
+#'
+#'
 #' @export
-bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1){
+bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1,mainweights=NULL,auxweights=NULL){
 
   # load libraries
   requireNamespace("stats")
@@ -80,6 +89,30 @@ bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1){
     stop("Incorrect method was specified. Method should be either 1 or 2.")
   }
 
+  if (!is.null(mainweights)){
+    # check if the weight vector for main data has a correct length
+    if (length(mainweights)!=dim(maindat)[1]){
+     stop("Incorrect length for the main data weight vector. The length must be equal to the number of rows of 'maindat'.")
+    }
+    # check if any weight vector includes NA or NaN or Inf
+    if (sum(is.na(mainweights))>0|sum(is.nan(mainweights))>0|sum(is.infinite(mainweights))>0){
+      stop("mainweights vector can not include any NAs or NaNs or Infs.")
+    }
+  }
+
+  if (!is.null(auxweights)){
+    # check if the weight vector for auxiliary data has a correct length
+    if (length(auxweights)!=dim(auxdat)[1]){
+      stop("Incorrect length for the auxiliary data weight vector. The length must be equal to the number of rows of 'auxdat'.")
+    }
+    # check if any weight vector includes NA or NaN or Inf
+    if (sum(is.na(auxweights))>0|sum(is.nan(auxweights))>0|sum(is.infinite(auxweights))>0){
+      stop("auxweights vector can not include any NAs or NaNs or Infs.")
+    }
+  }
+
+
+
   #############
   # prepare data in a right form
   #############
@@ -113,7 +146,12 @@ bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1){
         f1 <- paste0(f1,"+",comvar[k])
       }
     }
-    oout1 <- lm(formula=f1,data=maindat) ## regression without intercept because of "con" in "comvar"
+    if (is.null(mainweights)){
+      oout1 <- lm(formula=f1,data=maindat) ## regression without intercept because of "con" in "comvar"
+    } else{
+      oout1 <- lm(formula=f1,data=maindat,weights=mainweights) ## regression without intercept because of "con" in "comvar"
+    }
+
     Fypar <- matrix(oout1$coefficients,ncol=1)
     yhat  <- as.matrix(maindat[,comvar])%*%Fypar
     ysd   <- sd(oout1$residuals,na.rm=TRUE)
@@ -125,7 +163,11 @@ bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1){
           f2 <- paste0(f2,"+",comvar[k])
         }
     }
-    oout2 <- lm(formula=f2,data=auxdat) ## regression without intercept because of "con" in "comvar"
+    if (is.null(auxweights)){
+      oout2 <- lm(formula=f2,data=auxdat) ## regression without intercept because of "con" in "comvar"
+    } else{
+      oout2 <- lm(formula=f2,data=auxdat,weights=auxweights) ## regression without intercept because of "con" in "comvar"
+    }
     Fopar <- matrix(oout2$coefficients,ncol=1)
 
     # prediction in main data, not auxiliary data
@@ -140,11 +182,15 @@ bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1){
     ovar_m_u <- rep(NA,Nm)
 
     for (k in 1:Nm){
-      ovar_m_u[k] <- qnorm(p=   pnorm(q=maindat[k,depvar],mean=yhat[k],sd=ysd) ,mean=ohat[k],sd=osd)
-      ovar_m_l[k] <- qnorm(p=(1-pnorm(q=maindat[k,depvar],mean=yhat[k],sd=ysd)),mean=ohat[k],sd=osd)
+      if (!is.na(maindat[k,depvar]) & !is.nan(maindat[k,depvar]) & !is.na(yhat[k]) & !is.nan(yhat[k]) & !is.na(ysd) & !is.nan(ysd) & !is.na(ohat[k]) & !is.nan(ohat[k]) & !is.na(osd) & !is.nan(osd) ){
+        ovar_m_u[k] <- qnorm(p=   pnorm(q=maindat[k,depvar],mean=yhat[k],sd=ysd) ,mean=ohat[k],sd=osd)
+        ovar_m_l[k] <- qnorm(p=(1-pnorm(q=maindat[k,depvar],mean=yhat[k],sd=ysd)),mean=ohat[k],sd=osd)
+      }
     }
 
   } else if (method==2){
+
+    ### use np package
 
     # estimate f(depvar | comvar) nonparametrically
     # bandwidth selection
@@ -185,22 +231,97 @@ bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1){
   # compute lower bound and upper bound
   #############
 
-  mu_l <- mean(maindat[,depvar]*ovar_m_l,na.rm=TRUE)
-  mu_u <- mean(maindat[,depvar]*ovar_m_u,na.rm=TRUE)
+  # replace missing values to 0 and create a dummy for missingness
+  Imaindat <- !is.na(maindat)
+  Iauxdat  <- !is.na(auxdat)
+
+  colnames(Imaindat) <- colnames(maindat)
+  colnames(Iauxdat)  <- colnames(auxdat)
+
+  maindat[!Imaindat] <-0
+  auxdat[!Iauxdat]   <-0
+
+  Iovar_m_l <- !is.na(ovar_m_l)
+  Iovar_m_u <- !is.na(ovar_m_u)
+
+  ovar_m_l[!Iovar_m_l] <-0
+  ovar_m_u[!Iovar_m_u] <-0
 
   hat_beta_l <- rep(NA,nr)
   hat_beta_u <- rep(NA,nr)
 
+  if (is.null(mainweights)){
+
+    mu_l <- sum(maindat[,depvar]*ovar_m_l) / sum(Imaindat[,depvar]*Iovar_m_l)
+    mu_u <- sum(maindat[,depvar]*ovar_m_u) / sum(Imaindat[,depvar]*Iovar_m_u)
+
+  } else{
+
+    mu_l <- sum(maindat[,depvar]*ovar_m_l*mainweights) / sum(Imaindat[,depvar]*Iovar_m_l*mainweights)
+    mu_u <- sum(maindat[,depvar]*ovar_m_u*mainweights) / sum(Imaindat[,depvar]*Iovar_m_u*mainweights)
+
+  }
+
   # submatrices
-  A1 <- (t(as.matrix(auxdat[,ovar]))%*%as.matrix(auxdat[,ovar]))/Na
-  A2 <- (t(as.matrix(auxdat[,ovar]))%*%as.matrix(auxdat[,comvar]))/Na
-  C  <- as.matrix(rbind(maindat[,comvar],auxdat[,comvar]))
-  A3 <- (t(C)%*%C)/(Na+Nm)
+  if (is.null(auxweights)){
+
+    A1 <- (t(as.matrix(auxdat[,ovar]))%*%as.matrix(auxdat[,ovar]))  /(t(as.matrix(Iauxdat[,ovar]))%*%as.matrix(Iauxdat[,ovar]))
+    A2 <- (t(as.matrix(auxdat[,ovar]))%*%as.matrix(auxdat[,comvar]))/(t(as.matrix(Iauxdat[,ovar]))%*%as.matrix(Iauxdat[,comvar]))
+
+  } else{
+
+    A1 <- (t(as.matrix(auxweights*auxdat[,ovar]))%*%as.matrix(auxdat[,ovar]))  /sum(t(as.matrix(auxweights*Iauxdat[,ovar]))%*%as.matrix(Iauxdat[,ovar]))
+    A2 <- (t(as.matrix(auxweights*auxdat[,ovar]))%*%as.matrix(auxdat[,comvar]))/sum(t(as.matrix(auxweights*Iauxdat[,ovar]))%*%as.matrix(Iauxdat[,comvar]))
+
+  }
+
+
+  if (is.null(auxweights) & is.null(mainweights)){
+
+    C  <- as.matrix(rbind( maindat[,comvar], auxdat[,comvar]))
+    IC <- as.matrix(rbind(Imaindat[,comvar],Iauxdat[,comvar]))
+
+    A3 <- (t(C)%*%C)/(t(IC)%*%IC)
+
+  } else if(!is.null(auxweights) & is.null(mainweights)){
+
+    aw <- matrix(rep(auxweights, length(comvar)),ncol=length(comvar)) *(1/sum(auxweights)) * Na
+
+    C  <- as.matrix(rbind( maindat[,comvar],aw* auxdat[,comvar]))
+    IC <- as.matrix(rbind(Imaindat[,comvar],aw*Iauxdat[,comvar]))
+
+    A3 <- (t(C)%*%C)/(t(IC)%*%IC)
+
+  } else if(is.null(auxweights) & !is.null(mainweights)){
+
+    mw <- matrix(rep(mainweights,length(comvar)),ncol=length(comvar)) *(1/sum(mainweights)) * Nm
+
+    C  <- as.matrix(rbind(mw* maindat[,comvar],  auxdat[,comvar]))
+    IC <- as.matrix(rbind(mw*Imaindat[,comvar], Iauxdat[,comvar]))
+
+    A3 <- (t(C)%*%C)/(t(IC)%*%IC)
+
+  } else{
+
+    mw <- matrix(rep(mainweights,length(comvar)),ncol=length(comvar)) *(1/sum(mainweights)) * Nm
+    aw <- matrix(rep(auxweights, length(comvar)),ncol=length(comvar)) *(1/sum(auxweights))  * Na
+
+    C  <- as.matrix(rbind(mw* maindat[,comvar], aw* auxdat[,comvar]))
+    IC <- as.matrix(rbind(mw*Imaindat[,comvar], aw*Iauxdat[,comvar]))
+
+    A3 <- (t(C)%*%C)/(t(IC)%*%IC)
+
+  }
 
   XX <- as.matrix(rbind(cbind(A1,A2),cbind(t(A2),A3)))
 
   # OLS formula
-  B <- (t(as.matrix(maindat[,depvar]))%*%as.matrix(maindat[,comvar]))/Nm
+  if (is.null(mainweights)){
+    B <- (t(as.matrix(maindat[,depvar]))%*%as.matrix(maindat[,comvar]))/(t(as.matrix(Imaindat[,depvar]))%*%as.matrix(Imaindat[,comvar]))
+  } else{
+    B <- (t(as.matrix(mainweights*maindat[,depvar]))%*%as.matrix(maindat[,comvar]))/(t(as.matrix(mainweights*Imaindat[,depvar]))%*%as.matrix(Imaindat[,comvar]))
+  }
+
   B_l <- matrix(c(mu_l,B),ncol=1)
   B_u <- matrix(c(mu_u,B),ncol=1)
 

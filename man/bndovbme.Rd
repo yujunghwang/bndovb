@@ -13,7 +13,9 @@ bndovbme(
   comvar,
   sbar = 2,
   coefub = 100,
-  coeflb = -100
+  coeflb = -100,
+  mainweights = NULL,
+  auxweights = NULL
 )
 }
 \arguments{
@@ -33,9 +35,13 @@ When proxy variables are discrete, the first proxy variable is used for initiali
 
 \item{sbar}{A cardinality of the support of the discrete proxy variables. Default is 2. If proxy variables are continuous, this variable is irrelevant.}
 
-\item{coefub}{An upper bound constraint in the Maximum Likelihood estimation. Default is 100. If you do not want to set any constraint, just set it to a very large number.}
+\item{coefub}{An upper bound constraint in the Maximum Likelihood estimation for N(ovar|comvar). Default is 100. If you do not want to set any constraint, just set it to a very large number.}
 
-\item{coeflb}{A lower bound constraint in the Maximum Likelihood estimation coefficients. Default is -100. If you do not want to set any constraint, just set it to a very small number.}
+\item{coeflb}{A lower bound constraint in the Maximum Likelihood estimation for N(ovar|comvar). Default is -100. If you do not want to set any constraint, just set it to a very small number.}
+
+\item{mainweights}{An optional weight vector for the main dataset. The vector length must be equal to the number of rows of 'maindat'}
+
+\item{auxweights}{An optional weight vector for the auxiliary dataset. The vector length must be equal to the number of rows of 'auxdat'}
 }
 \value{
 Returns a list of 2 components : \describe{
@@ -51,8 +57,25 @@ and enough proxy variables for the omitted variable.
 When the omitted variable is continuous, the auxiliary data must contain at least two continuous proxy variables.
 When the omitted variable is discrete, the auxiliary data must contain at least three continuous proxy variables.
 }
+\examples{
+## load example data
+data(maindat_mecont)
+data(auxdat_mecont)
+
+## set ptype=1 for continuous proxy variables
+ pvar<-c("z1","z2","z3")
+ cvar<-c("x","w1")
+bndovbme(maindat=maindat_mecont,auxdat=auxdat_mecont,depvar="y",pvar=pvar,ptype=1,comvar=cvar)
+
+## set ptype=2 for discrete proxy variables
+data(maindat_medisc)
+data(auxdat_medisc)
+bndovbme(maindat=maindat_medisc,auxdat=auxdat_medisc,depvar="y",pvar=pvar,ptype=2,comvar=cvar)
+
+}
 \references{
-Hwang, Yujung (2021). Bounding Omitted Variable Bias Using Auxiliary Data. Working Paper.
+\describe{
+\item{Hwang, Yujung (2021)}{Bounding Omitted Variable Bias Using Auxiliary Data. Working Paper.}}
 }
 \author{
 Yujung Hwang, \email{yujungghwang@gmail.com}

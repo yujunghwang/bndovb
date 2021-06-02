@@ -13,7 +13,7 @@ knitr::opts_chunk$set(
 ```
 
 ## Introduction
-The R package **bndovb** implements a Hwang(2021) estimator to bound omitted variable bias using auxiliary data. The basic assumption is that the main data includes a dependent variable and every regressor but one omitted variable. So there is an omitted variable bias in the OLS result from the main data. However, if there is auxiliary data that includes every right-hand side regressor (or its noisy proxies), it can bound the omitted variable bias. Hwang(2021) provides a more general estimator for when there is more than one omitted variable and when the auxiliary data does not contain every right-hand side regressor (or its noisy proxies). 
+The R package **bndovb** implements a Hwang(2021) estimator to bound omitted variable bias using auxiliary data. The basic assumption is that the main data includes a dependent variable and every regressor but one omitted variable. So there is an omitted variable bias in the OLS result from the main data. However, if there is auxiliary data that includes every right-hand side regressor (or its noisy proxies), it can bound the omitted variable bias. Hwang(2021) provides a more general estimator for when there is more than one omitted variable and when the auxiliary data does not contain every right-hand side regressor (or its noisy proxies).
 
 This package implements a simple estimator when the number of omitted variables is just one, and the auxiliary data contains every right-hand side regressor but the only omitted variable. This package provides two different functions. 
 
@@ -45,7 +45,6 @@ The below example shows how to use a function 'bndovb' when the auxiliary data c
 ```{r}
 library(bndovb)
 library(MASS)
-library(dplyr)
 
 # sample size
 Nm <- 100000 # main data
@@ -90,10 +89,8 @@ print(oout)
 The code below shows how to use a function 'bndovbme' when the auxiliary data does not contain the omitted variable but contain continuous proxy variables for the omitted variable. The code may take some time to run.
 
 ```{r}
-
 library(bndovb)
 library(MASS)
-library(dplyr)
 library(pracma)
 
 set.seed(210413)
@@ -159,10 +156,8 @@ print(oout)
 The code below is similar to the Example 2 but assumes the proxy variables in auxiliary data are discrete. The code may take some time to run.
 
 ```{r}
-
 library(bndovb)
 library(MASS)
-library(dplyr)
 library(pracma)
 
 set.seed(210413)

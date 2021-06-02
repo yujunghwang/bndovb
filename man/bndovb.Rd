@@ -4,7 +4,16 @@
 \alias{bndovb}
 \title{bndovb}
 \usage{
-bndovb(maindat, auxdat, depvar, ovar, comvar, method = 1)
+bndovb(
+  maindat,
+  auxdat,
+  depvar,
+  ovar,
+  comvar,
+  method = 1,
+  mainweights = NULL,
+  auxweights = NULL
+)
 }
 \arguments{
 \item{maindat}{Main data set}
@@ -19,8 +28,12 @@ bndovb(maindat, auxdat, depvar, ovar, comvar, method = 1)
 
 \item{method}{CDF and Quantile function estimation method.
 Users can choose either 1 or 2. If the method is 1, the CDF and quantile function is estimated assuming a parametric normal distribution.
-If the method is 2, the CDF and quantile function is estimated using a nonparaemtric estimator in Li and Racine(2008), Li, Lin, and Racine(2013).
+If the method is 2, the CDF and quantile function is estimated using a nonparaemtric estimator in Li and Racine(2008) \doi{10.1198/073500107000000250}, Li, Lin, and Racine(2013) \doi{10.1080/07350015.2012.738955}.
 Default is 1.}
+
+\item{mainweights}{An optional weight vector for the main dataset. The vector length must be equal to the number of rows of 'maindat'}
+
+\item{auxweights}{An optional weight vector for the auxiliary dataset. The vector length must be equal to the number of rows of 'auxdat'}
 }
 \value{
 Returns a list of 2 components : \describe{
@@ -32,8 +45,17 @@ Returns a list of 2 components : \describe{
 This function runs a two sample least squares when auxiliary data contains every right-hand side regressor
 and main data contains a dependent variable and every right-hand side regressor but one omitted variable.
 }
+\examples{
+data(maindat_nome)
+data(auxdat_nome)
+
+bndovb(maindat=maindat_nome,auxdat=auxdat_nome,depvar="y",ovar="x1",comvar=c("x2","x3"),method=1)
+
+
+}
 \references{
-Hwang, Yujung (2021). Bounding Omitted Variable Bias Using Auxiliary Data. Working Paper.
+\describe{
+\item{Hwang, Yujung (2021)}{Bounding Omitted Variable Bias Using Auxiliary Data. Working Paper.}}
 }
 \author{
 Yujung Hwang, \email{yujungghwang@gmail.com}
