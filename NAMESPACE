@@ -2,6 +2,7 @@
 
 export(bndovb)
 export(bndovbme)
+export(discretizeNormDist)
 import(factormodel)
 import(maxLik)
 import(np)

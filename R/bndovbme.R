@@ -27,6 +27,8 @@
 #' @param sbar A cardinality of the support of the discrete proxy variables. Default is 2. If proxy variables are continuous, this variable is irrelevant.
 #' @param coefub An upper bound constraint in the Maximum Likelihood estimation for N(ovar|comvar). Default is 100. If you do not want to set any constraint, just set it to a very large number.
 #' @param coeflb A lower bound constraint in the Maximum Likelihood estimation for N(ovar|comvar). Default is -100. If you do not want to set any constraint, just set it to a very small number.
+#' @param ngrid Number of grid points to discretize the distributions of measurement errors in proxy variables. Default is 9.
+#' If you do not want to discretize the distributions, set the Ngrid to Inf.
 #' @param mainweights An optional weight vector for the main dataset. The vector length must be equal to the number of rows of 'maindat'
 #' @param auxweights An optional weight vector for the auxiliary dataset. The vector length must be equal to the number of rows of 'auxdat'
 #'
@@ -51,7 +53,7 @@
 #' bndovbme(maindat=maindat_medisc,auxdat=auxdat_medisc,depvar="y",pvar=pvar,ptype=2,comvar=cvar)
 #'
 #' @export
-bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,coefub=100,coeflb=-100,mainweights=NULL,auxweights=NULL){
+bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,coefub=100,coeflb=-100,ngrid=9,mainweights=NULL,auxweights=NULL){
 
   # load libraries
   requireNamespace("stats")
@@ -220,7 +222,61 @@ bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,coefub=100
       nsdnu[i]  <- sqrt(varnu[i]/(alpha1[i]^2))
     }
 
-    Plike1 <- function(param,cdat,npdat,nsdnu,nc,N,weights=NULL){
+    # discretize the distribution of measurement errors
+    if (!is.infinite(ngrid)){
+      # discretize the distribution of measurement errors of proxy variables
+      medist <- list()
+        for (g in 1:np){
+          # discretize a distribution with ngrid points with equal probability
+          medist[[g]] <- discretizeNormDist(n=ngrid,mean=0,var=(nsdnu[g]^2))
+        }
+    }
+
+    ## likelihood if ngrid<Inf
+    Plike1 <- function(param,cdat,npdat,nsdnu,nc,N,medist,weights=NULL){
+
+      Fopar <- matrix(param[1:nc],ncol=1)
+      osd <- abs(param[(nc+1)]) # positive value
+
+      mmu <- as.matrix(cdat)%*%Fopar
+
+      ### integration using discretized measurement error distribution
+      pdffun <- function(zz,muo,medist,ngrid) {
+        return(mean(dnorm(zz-medist,mean=muo,sd=osd)))
+      }
+
+      ll <- rep(0,N)
+      for (i in 1:N){
+
+        if (sum(is.na(npdat[i,]))==np){
+          # every proxy is missing
+          ll[i] <- NA
+        } else{
+          # convolution
+          for (k in 1:np){
+            if (!is.na(npdat[i,k])){
+              ll[i] <- ll[i] + log(pdffun(zz=npdat[i,k],muo=mmu[i],medist=medist[[k]],ngrid=ngrid))
+            }
+          }
+          if (is.infinite(ll[i])){
+            ll[i] <- -10^(-323) ### lowest number
+          }
+        }
+      }
+
+      if (!is.null(weights)){
+        ll <- ll*weights
+      }
+
+      ll <- ll[!is.na(ll) & !is.nan(ll)]
+
+      return(ll)
+    }
+
+
+
+    ## likelihood if ngrid=Inf
+    Plike1_inf <- function(param,cdat,npdat,nsdnu,nc,N,weights=NULL){
 
       Fopar <- matrix(param[1:nc],ncol=1)
       osd <- abs(param[(nc+1)]) # positive value
@@ -228,16 +284,24 @@ bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,coefub=100
       mmu <- as.matrix(cdat)%*%Fopar
 
       ### convolution of two normals
-      pdffun <- function(zz,muo,nsdnu) integrate(function(eps,zz,muo,nsdnu) dnorm(zz-eps,mean=muo,sd=osd)*dnorm(eps,mean=0,sd=nsdnu),-Inf,Inf,zz=zz,muo=muo,nsdnu=nsdnu,stop.on.error=FALSE)$value
+      pdffun_inf <- function(zz,muo,nsdnu) integrate(function(eps,zz,muo,nsdnu) dnorm(zz-eps,mean=muo,sd=osd)*dnorm(eps,mean=0,sd=nsdnu),-Inf,Inf,zz=zz,muo=muo,nsdnu=nsdnu,stop.on.error=FALSE)$value
 
       ll <- rep(0,N)
       for (i in 1:N){
-        # convolution
-        for (k in 1:np){
-          ll[i] <- ll[i] + log(pdffun(zz=npdat[i,k],muo=mmu[i],nsdnu=nsdnu[k]))
-        }
-        if (is.infinite(ll[i])){
-          ll[i] <- -10^(-323) ### lowest number
+
+        if (sum(is.na(npdat[i,]))==np){
+          # every proxy is missing
+          ll[i] <- NA
+        } else{
+          # convolution
+          for (k in 1:np){
+            if (!is.na(npdat[i,k])){
+              ll[i] <- ll[i] + log(pdffun_inf(zz=npdat[i,k],muo=mmu[i],nsdnu=nsdnu[k]))
+            }
+          }
+          if (is.infinite(ll[i])){
+            ll[i] <- -10^(-323) ### lowest number
+          }
         }
       }
 
@@ -254,8 +318,11 @@ bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,coefub=100
     A <- rbind( -eye((nc+1)),  eye((nc+1)))
     B <- c(rep(coefub,nc),coefub,-rep(coeflb,nc),-0.001)
 
-    oout <- maxLik(logLik=Plike1,start=c(rep(0,nc),1),constraints=list(ineqA=A, ineqB=B),cdat=auxdat[,comvar],npdat=npdat,nsdnu=nsdnu,nc=nc,N=N,weights=auxweights)
-
+    if (!is.infinite(ngrid)){
+      oout <- maxLik(logLik=Plike1,start=c(rep(0,nc),1),constraints=list(ineqA=A, ineqB=B),cdat=auxdat[,comvar],npdat=npdat,nsdnu=nsdnu,nc=nc,N=N,medist=medist,weights=auxweights)
+    } else{
+      oout <- maxLik(logLik=Plike1_inf,start=c(rep(0,nc),1),constraints=list(ineqA=A, ineqB=B),cdat=auxdat[,comvar],npdat=npdat,nsdnu=nsdnu,nc=nc,N=N,weights=auxweights)
+    }
 
     # prediction in main data, not auxiliary data
     param <- coef(oout)

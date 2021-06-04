@@ -14,6 +14,7 @@ bndovbme(
   sbar = 2,
   coefub = 100,
   coeflb = -100,
+  ngrid = 9,
   mainweights = NULL,
   auxweights = NULL
 )
@@ -38,6 +39,9 @@ When proxy variables are discrete, the first proxy variable is used for initiali
 \item{coefub}{An upper bound constraint in the Maximum Likelihood estimation for N(ovar|comvar). Default is 100. If you do not want to set any constraint, just set it to a very large number.}
 
 \item{coeflb}{A lower bound constraint in the Maximum Likelihood estimation for N(ovar|comvar). Default is -100. If you do not want to set any constraint, just set it to a very small number.}
+
+\item{ngrid}{Number of grid points to discretize the distributions of measurement errors in proxy variables. Default is 9.
+If you do not want to discretize the distributions, set the Ngrid to Inf.}
 
 \item{mainweights}{An optional weight vector for the main dataset. The vector length must be equal to the number of rows of 'maindat'}
 
