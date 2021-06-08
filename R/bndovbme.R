@@ -10,11 +10,10 @@
 #' \item{Hwang, Yujung (2021)}{Bounding Omitted Variable Bias Using Auxiliary Data. Working Paper.}}
 #' @importFrom utils install.packages
 #' @import stats
-#' @import np
 #' @importFrom pracma pinv eye
 #' @importFrom MASS mvrnorm
 #' @import factormodel
-#' @import maxLik
+#' @importFrom nnet multinom
 #'
 #' @param maindat Main data set
 #' @param auxdat Auxiliary data set
@@ -25,12 +24,14 @@
 #' @param ptype Either 1 (continuous) or 2 (discrete). Whether proxy variables are continuous or discrete. Default is 1 (continuous).
 #' @param comvar A vector of the names of the common regressors existing in both main data and auxiliary data
 #' @param sbar A cardinality of the support of the discrete proxy variables. Default is 2. If proxy variables are continuous, this variable is irrelevant.
-#' @param coefub An upper bound constraint in the Maximum Likelihood estimation for N(ovar|comvar). Default is 100. If you do not want to set any constraint, just set it to a very large number.
-#' @param coeflb A lower bound constraint in the Maximum Likelihood estimation for N(ovar|comvar). Default is -100. If you do not want to set any constraint, just set it to a very small number.
-#' @param ngrid Number of grid points to discretize the distributions of measurement errors in proxy variables. Default is 9.
-#' If you do not want to discretize the distributions, set the Ngrid to Inf.
 #' @param mainweights An optional weight vector for the main dataset. The vector length must be equal to the number of rows of 'maindat'
 #' @param auxweights An optional weight vector for the auxiliary dataset. The vector length must be equal to the number of rows of 'auxdat'
+#' @param normalize Whether to normalize the omitted variable to have mean 0 and standard deviation 1. Set TRUE or FALSE.
+#' Default is TRUE. If FALSE, then the scale of the omitted variable is anchored with the first proxy variable in pvar list.
+#' @param signres An option to impose a sign restriction on a coefficient of an omitted variable. Set either NULL or pos or neg.
+#' Default is NULL. If NULL, there is no sign restriction.
+#' If 'pos', the estimator imposes an extra restriction that the coefficient of an omitted variable must be positive.
+#' If 'neg', the estimator imposes an extra restriction that the coefficient of an omitted variable must be negative.
 #'
 #' @return Returns a list of 2 components : \describe{
 #' \item{hat_beta_l}{lower bound estimates of regression coefficients}
@@ -53,15 +54,14 @@
 #' bndovbme(maindat=maindat_medisc,auxdat=auxdat_medisc,depvar="y",pvar=pvar,ptype=2,comvar=cvar)
 #'
 #' @export
-bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,coefub=100,coeflb=-100,ngrid=9,mainweights=NULL,auxweights=NULL){
+bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,mainweights=NULL,auxweights=NULL,normalize=TRUE,signres=NULL){
 
   # load libraries
   requireNamespace("stats")
   requireNamespace("utils")
-  requireNamespace("np")
   requireNamespace("pracma")
   requireNamespace("factormodel")
-  requireNamespace("maxLik")
+  requireNamespace("nnet")
 
   #############
   # check if inputs are there in a correct form
@@ -136,6 +136,12 @@ bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,coefub=100
     }
   }
 
+  if (!is.null(signres)){
+    if (signres!="pos" & signres!="neg"){
+      stop("signres must be either NULL or pos or neg.")
+    }
+  }
+
   #############
   # prepare data in a right form
   #############
@@ -173,17 +179,35 @@ bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,coefub=100
     oout1 <- lm(formula=f1,data=maindat,weights=mainweights) ## regression without intercept because of "con" in "comvar"
   }
   Fypar <- matrix(oout1$coefficients,ncol=1)
+  Fypar[is.na(Fypar)] <- 0
   yhat  <- as.matrix(maindat[,comvar])%*%Fypar
   ysd   <- sd(oout1$residuals,na.rm=TRUE)
 
   # estimate f(pvar | ovar)
   if (ptype==1){
+
     # continuous proxy variables
     if (is.null(auxweights)){
       pout <- cproxyme(dat=auxdat[,pvar],anchor=1)
     } else{
       pout <- cproxyme(dat=auxdat[,pvar],anchor=1,weights=auxweights)
     }
+
+    if (normalize==TRUE){
+
+      # noramlize proxy variables so that latent variable has mean 0 and std 1
+      for (g in 1:length(pvar)){
+        auxdat[,pvar[g]] <- (auxdat[,pvar[g]] - pout$mtheta)/(sqrt(pout$vartheta))
+      }
+
+      # reestimate measurement equations with normalized proxy variables
+      if (is.null(auxweights)){
+        pout <- cproxyme(dat=auxdat[,pvar],anchor=1)
+      } else{
+        pout <- cproxyme(dat=auxdat[,pvar],anchor=1,weights=auxweights)
+      }
+    }
+
     alpha0   <- pout$alpha0
     alpha1   <- pout$alpha1
     varnu    <- pout$varnu
@@ -222,112 +246,35 @@ bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,coefub=100
       nsdnu[i]  <- sqrt(varnu[i]/(alpha1[i]^2))
     }
 
-    # discretize the distribution of measurement errors
-    if (!is.infinite(ngrid)){
-      # discretize the distribution of measurement errors of proxy variables
-      medist <- list()
-        for (g in 1:np){
-          # discretize a distribution with ngrid points with equal probability
-          medist[[g]] <- discretizeNormDist(n=ngrid,mean=0,var=(nsdnu[g]^2))
-        }
+    # stack up the normalized proxy data
+    sdat <- cbind(npdat[,1],auxdat[,comvar])
+    colnames(sdat) <- c("y",comvar)
+    for (a in 2:np){
+      sdat0 <- cbind(npdat[,a],auxdat[,comvar])
+      colnames(sdat0) <- c("y",comvar)
+      sdat <- rbind(sdat,sdat0)
+    }
+    sdat <- as.data.frame(sdat)
+
+    f2 <- paste0("y ~ 0 +",comvar[1])
+    if (length(comvar)>1){
+      for (k in 2:length(comvar)){
+        f2 <- paste0(f2,"+",comvar[k])
+      }
     }
 
-    ## likelihood if ngrid<Inf
-    Plike1 <- function(param,cdat,npdat,nsdnu,nc,N,medist,weights=NULL){
-
-      Fopar <- matrix(param[1:nc],ncol=1)
-      osd <- abs(param[(nc+1)]) # positive value
-
-      mmu <- as.matrix(cdat)%*%Fopar
-
-      ### integration using discretized measurement error distribution
-      pdffun <- function(zz,muo,medist,ngrid) {
-        return(mean(dnorm(zz-medist,mean=muo,sd=osd)))
-      }
-
-      ll <- rep(0,N)
-      for (i in 1:N){
-
-        if (sum(is.na(npdat[i,]))==np){
-          # every proxy is missing
-          ll[i] <- NA
-        } else{
-          # convolution
-          for (k in 1:np){
-            if (!is.na(npdat[i,k])){
-              ll[i] <- ll[i] + log(pdffun(zz=npdat[i,k],muo=mmu[i],medist=medist[[k]],ngrid=ngrid))
-            }
-          }
-          if (is.infinite(ll[i])){
-            ll[i] <- -10^(-323) ### lowest number
-          }
-        }
-      }
-
-      if (!is.null(weights)){
-        ll <- ll*weights
-      }
-
-      ll <- ll[!is.na(ll) & !is.nan(ll)]
-
-      return(ll)
-    }
-
-
-
-    ## likelihood if ngrid=Inf
-    Plike1_inf <- function(param,cdat,npdat,nsdnu,nc,N,weights=NULL){
-
-      Fopar <- matrix(param[1:nc],ncol=1)
-      osd <- abs(param[(nc+1)]) # positive value
-
-      mmu <- as.matrix(cdat)%*%Fopar
-
-      ### convolution of two normals
-      pdffun_inf <- function(zz,muo,nsdnu) integrate(function(eps,zz,muo,nsdnu) dnorm(zz-eps,mean=muo,sd=osd)*dnorm(eps,mean=0,sd=nsdnu),-Inf,Inf,zz=zz,muo=muo,nsdnu=nsdnu,stop.on.error=FALSE)$value
-
-      ll <- rep(0,N)
-      for (i in 1:N){
-
-        if (sum(is.na(npdat[i,]))==np){
-          # every proxy is missing
-          ll[i] <- NA
-        } else{
-          # convolution
-          for (k in 1:np){
-            if (!is.na(npdat[i,k])){
-              ll[i] <- ll[i] + log(pdffun_inf(zz=npdat[i,k],muo=mmu[i],nsdnu=nsdnu[k]))
-            }
-          }
-          if (is.infinite(ll[i])){
-            ll[i] <- -10^(-323) ### lowest number
-          }
-        }
-      }
-
-      if (!is.null(weights)){
-        ll <- ll*weights
-      }
-
-      ll <- ll[!is.na(ll) & !is.nan(ll)]
-
-      return(ll)
-    }
-
-    # estimate parameters
-    A <- rbind( -eye((nc+1)),  eye((nc+1)))
-    B <- c(rep(coefub,nc),coefub,-rep(coeflb,nc),-0.001)
-
-    if (!is.infinite(ngrid)){
-      oout <- maxLik(logLik=Plike1,start=c(rep(0,nc),1),constraints=list(ineqA=A, ineqB=B),cdat=auxdat[,comvar],npdat=npdat,nsdnu=nsdnu,nc=nc,N=N,medist=medist,weights=auxweights)
+    if (is.null(auxweights)){
+      oout2 <- lm(formula=f2,data=sdat) ## regression without intercept because of "con" in "comvar"
     } else{
-      oout <- maxLik(logLik=Plike1_inf,start=c(rep(0,nc),1),constraints=list(ineqA=A, ineqB=B),cdat=auxdat[,comvar],npdat=npdat,nsdnu=nsdnu,nc=nc,N=N,weights=auxweights)
+      oout2 <- lm(formula=f2,data=sdat,weights=auxweights) ## regression without intercept because of "con" in "comvar"
     }
 
     # prediction in main data, not auxiliary data
-    param <- coef(oout)
+    param <- oout2$coefficients
+    param[is.na(param)] <- 0
+
     Fopar <- matrix(param[1:nc],ncol=1)
-    osd   <- abs(param[(nc+1)]) # positive value
+    osd   <- sd(oout2$residuals)
     ohat  <- as.matrix(maindat[,comvar])%*%Fopar
 
     #############
@@ -346,39 +293,23 @@ bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,coefub=100
 
   } else if (ptype==2){
 
-    meanNoNA <- function(x){
-      return(mean(x,na.rm=TRUE))
+    if (is.null(auxweights)){
+      oout2 <- multinom(formula=typeprob~as.matrix(auxdat[,comvar[1:(nc-1)]]),maxit=10000,trace=FALSE) ## regression without intercept because of "con" in "comvar"
+    } else{
+      oout2 <- multinom(formula=typeprob~as.matrix(auxdat[,comvar[1:(nc-1)]]),weights=auxweights,maxit=10000,trace=FALSE) ## regression without intercept because of "con" in "comvar"
     }
 
-    # multinomial logit
-    Plike2 <- function(param,cdat,typeprob,sbar,nc,N,weights=NULL){
 
-      dim(param) <- c(nc,sbar-1)
-      param <- cbind(rep(0,nc),param)
+    param <- t(coef(oout2))
+    param[is.na(param)]<-0
 
-      nn <- exp(as.matrix(cdat)%*%as.matrix(param))
+    npr <- dim(param)[1]
+    npc <- dim(param)[2]
 
-      dd <- matrix(rep(apply(nn,1,sum),sbar),ncol=sbar)
-      pp <- nn/dd
-
-      ll <- apply(typeprob*log(pp),1,sum)
-
-      if (!is.null(weights)){
-        ll <- ll*weights
-      }
-
-      ll <- ll[!is.na(ll)&!is.nan(ll)]
-      return(ll)
-    }
-
-    # estimate parameters
-    A <- rbind( -eye((nc*(sbar-1))),  eye((nc*(sbar-1))))
-    B <- c(rep(coefub,nc*(sbar-1)),-rep(coeflb,nc*(sbar-1)))
-
-    oout <- maxLik(logLik=Plike2,start=c(rep(0,nc*(sbar-1))),constraints=list(ineqA=A, ineqB=B),cdat=auxdat[,comvar],typeprob=typeprob,sbar=sbar,nc=nc,N=N,weights=auxweights)
+    # move intercept to the last row
+    Fopar <- rbind(matrix(param[2:npr,],ncol=npc),matrix(param[1,],ncol=npc))
 
     # prediction in main data, not auxiliary data
-    Fopar  <- matrix(coef(oout),ncol=(sbar-1))
     Fopar  <- cbind(rep(0,nc),Fopar)
     oprob  <- exp(as.matrix(maindat[,comvar])%*%Fopar)
     oprob  <- oprob/matrix(rep(apply(oprob,1,sum),sbar),ncol=sbar)
@@ -392,10 +323,16 @@ bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,coefub=100
     ovar_m_l <- rep(NA,Nm)
     ovar_m_u <- rep(NA,Nm)
 
+    if (normalize==TRUE){
+      ogrid <- (c(1:sbar)-mean(c(1:sbar)))/sd(c(1:sbar))
+    } else{
+      ogrid <- c(1:sbar)
+    }
+
     for (k in 1:Nm){
       if (!is.na(maindat[k,depvar]) & !is.nan(maindat[k,depvar]) & !is.na(yhat[k]) & !is.nan(yhat[k]) & !is.na(ysd) & !is.nan(ysd) & sum(is.na(coprob[k,])|is.nan(coprob[k,]))==0 ){
-        ovar_m_u[k] <- which(   pnorm(q=maindat[k,depvar],mean=yhat[k],sd=ysd) <coprob[k,])[1]
-        ovar_m_l[k] <- which((1-pnorm(q=maindat[k,depvar],mean=yhat[k],sd=ysd))<coprob[k,])[1]
+        ovar_m_u[k] <- ogrid[which(   pnorm(q=maindat[k,depvar],mean=yhat[k],sd=ysd) <coprob[k,])[1]]
+        ovar_m_l[k] <- ogrid[which((1-pnorm(q=maindat[k,depvar],mean=yhat[k],sd=ysd))<coprob[k,])[1]]
       }
     }
 
@@ -453,14 +390,18 @@ bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,coefub=100
     }
   } else if (ptype==2){
 
+    meanNoNA <- function(x){
+      return(mean(x,na.rm=TRUE))
+    }
+
     # discrete
     iprob <- apply(typeprob,2,meanNoNA)
-    A1 <- sum((c(1:sbar)^2)*iprob)
+    A1 <- sum((ogrid^2)*iprob)
     A2 <- matrix(0,nrow=1,ncol=nc)
     for (k in 1:nc){
       temp <- 0
       for (l in 1:sbar){
-        temp <- temp + l*auxdat[,comvar[k]]*typeprob[,l]
+        temp <- temp + ogrid[l]*auxdat[,comvar[k]]*typeprob[,l]
       }
       if (is.null(auxweights)){
         A2[1,k] <- sum(temp) / sum(Iauxdat[,comvar[k]])
@@ -529,6 +470,56 @@ bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,coefub=100
 
   colnames(hat_beta_l) <- c("ovar",comvar)
   colnames(hat_beta_u) <- c("ovar",comvar)
+
+  if (!is.null(signres)){
+    if (signres=="pos" & (hat_beta_l[1]<0)){
+      # solve the inverse problem
+      M <- pinv(XX)
+      mu_zero <- -(M[1,2:nr]%*%matrix(B,ncol=1))/M[1,1]
+
+      if (M[1,1]<0){
+        mu_u <- mu_zero
+        mu_l <- min(mu_zero,mu_l)
+      } else{
+        mu_l <- mu_zero
+        mu_u <- max(mu_zero,mu_u)
+      }
+
+      B_l <- matrix(c(mu_l,B),ncol=1)
+      B_u <- matrix(c(mu_u,B),ncol=1)
+
+      hat_beta_l <- matrix(pmin(pinv(XX)%*%B_l,pinv(XX)%*%B_u),nrow=1)
+      hat_beta_u <- matrix(pmax(pinv(XX)%*%B_l,pinv(XX)%*%B_u),nrow=1)
+
+      colnames(hat_beta_l) <- c("ovar",comvar)
+      colnames(hat_beta_u) <- c("ovar",comvar)
+
+    }
+
+    if (signres=="neg" & (hat_beta_u[1]>0)){
+      # solve the inverse problem
+      M <- pinv(XX)
+      mu_zero <- -(M[1,2:nr]%*%matrix(B,ncol=1))/M[1,1]
+
+      if (M[1,1]<0){
+        mu_l <- mu_zero
+        mu_u <- max(mu_zero,mu_u)
+      } else{
+        mu_u <- mu_zero
+        mu_l <- min(mu_zero,mu_l)
+      }
+
+      B_l <- matrix(c(mu_l,B),ncol=1)
+      B_u <- matrix(c(mu_u,B),ncol=1)
+
+      hat_beta_l <- matrix(pmin(pinv(XX)%*%B_l,pinv(XX)%*%B_u),nrow=1)
+      hat_beta_u <- matrix(pmax(pinv(XX)%*%B_l,pinv(XX)%*%B_u),nrow=1)
+
+      colnames(hat_beta_l) <- c("ovar",comvar)
+      colnames(hat_beta_u) <- c("ovar",comvar)
+
+    }
+  }
 
   # change the order of OLS coefficients
   comvar2 <- comvar[comvar!="con"]

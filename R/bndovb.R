@@ -21,6 +21,10 @@
 #' Default is 1.
 #' @param mainweights An optional weight vector for the main dataset. The vector length must be equal to the number of rows of 'maindat'
 #' @param auxweights An optional weight vector for the auxiliary dataset. The vector length must be equal to the number of rows of 'auxdat'
+#' @param signres An option to impose a sign restriction on a coefficient of an omitted variable. Set either NULL or pos or neg.
+#' Default is NULL. If NULL, there is no sign restriction.
+#' If 'pos', the estimator imposes an extra restriction that the coefficient of an omitted variable must be positive.
+#' If 'neg', the estimator imposes an extra restriction that the coefficient of an omitted variable must be negative.
 #'
 #' @return Returns a list of 2 components : \describe{
 #' \item{hat_beta_l}{lower bound estimates of regression coefficients}
@@ -35,7 +39,7 @@
 #'
 #'
 #' @export
-bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1,mainweights=NULL,auxweights=NULL){
+bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1,mainweights=NULL,auxweights=NULL,signres=NULL){
 
   # load libraries
   requireNamespace("stats")
@@ -111,6 +115,11 @@ bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1,mainweights=NULL,a
     }
   }
 
+  if (!is.null(signres)){
+    if (signres!="pos" & signres!="neg"){
+      stop("signres must be either NULL or pos or neg.")
+    }
+  }
 
 
   #############
@@ -153,6 +162,8 @@ bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1,mainweights=NULL,a
     }
 
     Fypar <- matrix(oout1$coefficients,ncol=1)
+    Fypar[is.na(Fypar)] <- 0
+
     yhat  <- as.matrix(maindat[,comvar])%*%Fypar
     ysd   <- sd(oout1$residuals,na.rm=TRUE)
 
@@ -169,6 +180,7 @@ bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1,mainweights=NULL,a
       oout2 <- lm(formula=f2,data=auxdat,weights=auxweights) ## regression without intercept because of "con" in "comvar"
     }
     Fopar <- matrix(oout2$coefficients,ncol=1)
+    Fopar[is.na(Fopar)] <-0
 
     # prediction in main data, not auxiliary data
     ohat  <- as.matrix(maindat[,comvar])%*%Fopar
@@ -330,6 +342,57 @@ bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1,mainweights=NULL,a
 
   colnames(hat_beta_l) <- c(ovar,comvar)
   colnames(hat_beta_u) <- c(ovar,comvar)
+
+
+  if (!is.null(signres)){
+    if (signres=="pos" & (hat_beta_l[1]<0)){
+      # solve the inverse problem
+      M <- pinv(XX)
+      mu_zero <- -(M[1,2:nr]%*%B)/M[1,1]
+
+      if (M[1,1]<0){
+        mu_u <- mu_zero
+        mu_l <- min(mu_zero,mu_l)
+      } else{
+        mu_l <- mu_zero
+        mu_u <- max(mu_zero,mu_u)
+      }
+
+      B_l <- matrix(c(mu_l,B),ncol=1)
+      B_u <- matrix(c(mu_u,B),ncol=1)
+
+      hat_beta_l <- matrix(pmin(pinv(XX)%*%B_l,pinv(XX)%*%B_u),nrow=1)
+      hat_beta_u <- matrix(pmax(pinv(XX)%*%B_l,pinv(XX)%*%B_u),nrow=1)
+
+      colnames(hat_beta_l) <- c(ovar,comvar)
+      colnames(hat_beta_u) <- c(ovar,comvar)
+
+    }
+
+    if (signres=="neg" & (hat_beta_u[1]>0)){
+      # solve the inverse problem
+      M <- pinv(XX)
+      mu_zero <- -(M[1,2:nr]%*%B)/M[1,1]
+
+      if (M[1,1]<0){
+        mu_l <- mu_zero
+        mu_u <- max(mu_zero,mu_u)
+      } else{
+        mu_u <- mu_zero
+        mu_l <- min(mu_zero,mu_l)
+      }
+
+      B_l <- matrix(c(mu_l,B),ncol=1)
+      B_u <- matrix(c(mu_u,B),ncol=1)
+
+      hat_beta_l <- matrix(pmin(pinv(XX)%*%B_l,pinv(XX)%*%B_u),nrow=1)
+      hat_beta_u <- matrix(pmax(pinv(XX)%*%B_l,pinv(XX)%*%B_u),nrow=1)
+
+      colnames(hat_beta_l) <- c(ovar,comvar)
+      colnames(hat_beta_u) <- c(ovar,comvar)
+
+    }
+  }
 
   # change the order of OLS coefficients
   comvar2 <- comvar[comvar!="con"]

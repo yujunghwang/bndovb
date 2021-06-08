@@ -12,7 +12,8 @@ bndovb(
   comvar,
   method = 1,
   mainweights = NULL,
-  auxweights = NULL
+  auxweights = NULL,
+  signres = NULL
 )
 }
 \arguments{
@@ -34,6 +35,11 @@ Default is 1.}
 \item{mainweights}{An optional weight vector for the main dataset. The vector length must be equal to the number of rows of 'maindat'}
 
 \item{auxweights}{An optional weight vector for the auxiliary dataset. The vector length must be equal to the number of rows of 'auxdat'}
+
+\item{signres}{An option to impose a sign restriction on a coefficient of an omitted variable. Set either NULL or pos or neg.
+Default is NULL. If NULL, there is no sign restriction.
+If 'pos', the estimator imposes an extra restriction that the coefficient of an omitted variable must be positive.
+If 'neg', the estimator imposes an extra restriction that the coefficient of an omitted variable must be negative.}
 }
 \value{
 Returns a list of 2 components : \describe{

@@ -12,11 +12,10 @@ bndovbme(
   ptype = 1,
   comvar,
   sbar = 2,
-  coefub = 100,
-  coeflb = -100,
-  ngrid = 9,
   mainweights = NULL,
-  auxweights = NULL
+  auxweights = NULL,
+  normalize = TRUE,
+  signres = NULL
 )
 }
 \arguments{
@@ -36,16 +35,17 @@ When proxy variables are discrete, the first proxy variable is used for initiali
 
 \item{sbar}{A cardinality of the support of the discrete proxy variables. Default is 2. If proxy variables are continuous, this variable is irrelevant.}
 
-\item{coefub}{An upper bound constraint in the Maximum Likelihood estimation for N(ovar|comvar). Default is 100. If you do not want to set any constraint, just set it to a very large number.}
-
-\item{coeflb}{A lower bound constraint in the Maximum Likelihood estimation for N(ovar|comvar). Default is -100. If you do not want to set any constraint, just set it to a very small number.}
-
-\item{ngrid}{Number of grid points to discretize the distributions of measurement errors in proxy variables. Default is 9.
-If you do not want to discretize the distributions, set the Ngrid to Inf.}
-
 \item{mainweights}{An optional weight vector for the main dataset. The vector length must be equal to the number of rows of 'maindat'}
 
 \item{auxweights}{An optional weight vector for the auxiliary dataset. The vector length must be equal to the number of rows of 'auxdat'}
+
+\item{normalize}{Whether to normalize the omitted variable to have mean 0 and standard deviation 1. Set TRUE or FALSE.
+Default is TRUE. If FALSE, then the scale of the omitted variable is anchored with the first proxy variable in pvar list.}
+
+\item{signres}{An option to impose a sign restriction on a coefficient of an omitted variable. Set either NULL or pos or neg.
+Default is NULL. If NULL, there is no sign restriction.
+If 'pos', the estimator imposes an extra restriction that the coefficient of an omitted variable must be positive.
+If 'neg', the estimator imposes an extra restriction that the coefficient of an omitted variable must be negative.}
 }
 \value{
 Returns a list of 2 components : \describe{

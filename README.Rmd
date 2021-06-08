@@ -144,7 +144,7 @@ auxdat <- data.frame(x=x_b,w1=w1_b,z1=z_b[,1],z2=z_b[,2],z3=z_b[,3])
 
 
 # use 'bndovbme' function
-oout <- bndovbme(maindat=maindat,auxdat=auxdat,depvar=c("y"),pvar=c("z1","z2","z3"),ptype=1,comvar=c("x","w1"))
+oout <- bndovbme(maindat=maindat,auxdat=auxdat,depvar=c("y"),pvar=c("z1","z2","z3"),ptype=1,comvar=c("x","w1"),normalize=FALSE)
 print(oout)
 
 
@@ -220,7 +220,7 @@ maindat <- data.frame(y=y_a,x=x_a,w1=w1_a)
 auxdat <- data.frame(x=x_b,w1=w1_b,z1=z_b[,1],z2=z_b[,2],z3=z_b[,3])
 
 # use 'bndovbme' function
-oout <- bndovbme(maindat=maindat,auxdat=auxdat,depvar=c("y"),pvar=c("z1","z2","z3"),ptype=2,comvar=c("x","w1"),sbar=2)
+oout <- bndovbme(maindat=maindat,auxdat=auxdat,depvar=c("y"),pvar=c("z1","z2","z3"),ptype=2,comvar=c("x","w1"),sbar=2,normalize=FALSE)
 print(oout)
 
 ```

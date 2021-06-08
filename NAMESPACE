@@ -2,12 +2,11 @@
 
 export(bndovb)
 export(bndovbme)
-export(discretizeNormDist)
 import(factormodel)
-import(maxLik)
 import(np)
 import(stats)
 importFrom(MASS,mvrnorm)
+importFrom(nnet,multinom)
 importFrom(pracma,eye)
 importFrom(pracma,pinv)
 importFrom(utils,install.packages)

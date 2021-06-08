@@ -22,7 +22,7 @@ Imports:
 	MASS,
 	dplyr,
 	factormodel,
-	maxLik
+	nnet
 Suggests: 
     knitr,
     rmarkdown
