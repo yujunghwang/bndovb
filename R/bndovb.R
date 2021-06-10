@@ -14,13 +14,13 @@
 #' @param auxdat Auxiliary data set
 #' @param depvar A name of a dependent variable in main dataset
 #' @param ovar A name of an omitted variable in main dataset which exists in auxiliary data
-#' @param comvar A vector of common regressors existing in both main data and auxiliary data
+#' @param comvar A vector of the names of common regressors existing in both main data and auxiliary data
 #' @param method CDF and Quantile function estimation method.
 #' Users can choose either 1 or 2. If the method is 1, the CDF and quantile function is estimated assuming a parametric normal distribution.
 #' If the method is 2, the CDF and quantile function is estimated using a nonparaemtric estimator in Li and Racine(2008) \doi{10.1198/073500107000000250}, Li, Lin, and Racine(2013) \doi{10.1080/07350015.2012.738955}.
 #' Default is 1.
-#' @param mainweights An optional weight vector for the main dataset. The vector length must be equal to the number of rows of 'maindat'
-#' @param auxweights An optional weight vector for the auxiliary dataset. The vector length must be equal to the number of rows of 'auxdat'
+#' @param mainweights An optional weight vector for the main dataset. The length must be equal to the number of rows of 'maindat'.
+#' @param auxweights An optional weight vector for the auxiliary dataset. The length must be equal to the number of rows of 'auxdat'.
 #' @param signres An option to impose a sign restriction on a coefficient of an omitted variable. Set either NULL or pos or neg.
 #' Default is NULL. If NULL, there is no sign restriction.
 #' If 'pos', the estimator imposes an extra restriction that the coefficient of an omitted variable must be positive.
@@ -94,9 +94,9 @@ bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1,mainweights=NULL,a
   }
 
   if (!is.null(mainweights)){
-    # check if the weight vector for main data has a correct length
+    # check if the weight vector has right length
     if (length(mainweights)!=dim(maindat)[1]){
-     stop("Incorrect length for the main data weight vector. The length must be equal to the number of rows of 'maindat'.")
+     stop("The length of 'mainweights' is not equal to the number of rows of 'maindat'.")
     }
     # check if any weight vector includes NA or NaN or Inf
     if (sum(is.na(mainweights))>0|sum(is.nan(mainweights))>0|sum(is.infinite(mainweights))>0){
@@ -105,9 +105,9 @@ bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1,mainweights=NULL,a
   }
 
   if (!is.null(auxweights)){
-    # check if the weight vector for auxiliary data has a correct length
+    # check if the weight variable is included in the auxdat
     if (length(auxweights)!=dim(auxdat)[1]){
-      stop("Incorrect length for the auxiliary data weight vector. The length must be equal to the number of rows of 'auxdat'.")
+      stop("The length of 'auxweights' is not equal to the number of rows of 'auxdat'.")
     }
     # check if any weight vector includes NA or NaN or Inf
     if (sum(is.na(auxweights))>0|sum(is.nan(auxweights))>0|sum(is.infinite(auxweights))>0){
@@ -138,6 +138,11 @@ bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1,mainweights=NULL,a
   # leave only necessary variables and make the order of variables consistent
   maindat <- maindat[,c(depvar,comvar)]
   auxdat <- auxdat[,c(ovar,comvar)]
+
+  # add a weight vector to use 'lm' later
+  maindat$mainweights <- mainweights
+  auxdat$auxweights   <- auxweights
+
 
   # number of regressors in a regrssion model
   nr <- length(comvar)+length(ovar)
@@ -282,8 +287,8 @@ bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1,mainweights=NULL,a
 
   } else{
 
-    A1 <- (t(as.matrix(auxweights*auxdat[,ovar]))%*%as.matrix(auxdat[,ovar]))  /sum(t(as.matrix(auxweights*Iauxdat[,ovar]))%*%as.matrix(Iauxdat[,ovar]))
-    A2 <- (t(as.matrix(auxweights*auxdat[,ovar]))%*%as.matrix(auxdat[,comvar]))/sum(t(as.matrix(auxweights*Iauxdat[,ovar]))%*%as.matrix(Iauxdat[,comvar]))
+    A1 <- (t(as.matrix(auxweights*auxdat[,ovar]))%*%as.matrix(auxdat[,ovar]))  /t(as.matrix(auxweights*Iauxdat[,ovar]))%*%as.matrix(Iauxdat[,ovar])
+    A2 <- (t(as.matrix(auxweights*auxdat[,ovar]))%*%as.matrix(auxdat[,comvar]))/t(as.matrix(auxweights*Iauxdat[,ovar]))%*%as.matrix(Iauxdat[,comvar])
 
   }
 
@@ -299,10 +304,13 @@ bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1,mainweights=NULL,a
 
     aw <- matrix(rep(auxweights, length(comvar)),ncol=length(comvar)) *(1/sum(auxweights)) * Na
 
-    C  <- as.matrix(rbind( maindat[,comvar],aw* auxdat[,comvar]))
-    IC <- as.matrix(rbind(Imaindat[,comvar],aw*Iauxdat[,comvar]))
+    C   <- as.matrix(rbind( maindat[,comvar],aw* auxdat[,comvar]))
+    IC  <- as.matrix(rbind(Imaindat[,comvar],aw*Iauxdat[,comvar]))
 
-    A3 <- (t(C)%*%C)/(t(IC)%*%IC)
+    C2  <- as.matrix(rbind( maindat[,comvar], auxdat[,comvar]))
+    IC2 <- as.matrix(rbind(Imaindat[,comvar],Iauxdat[,comvar]))
+
+    A3 <- (t(C)%*%C2)/(t(IC)%*%IC2)
 
   } else if(is.null(auxweights) & !is.null(mainweights)){
 
@@ -311,7 +319,10 @@ bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1,mainweights=NULL,a
     C  <- as.matrix(rbind(mw* maindat[,comvar],  auxdat[,comvar]))
     IC <- as.matrix(rbind(mw*Imaindat[,comvar], Iauxdat[,comvar]))
 
-    A3 <- (t(C)%*%C)/(t(IC)%*%IC)
+    C2  <- as.matrix(rbind( maindat[,comvar],  auxdat[,comvar]))
+    IC2 <- as.matrix(rbind(Imaindat[,comvar], Iauxdat[,comvar]))
+
+    A3 <- (t(C)%*%C2)/(t(IC)%*%IC2)
 
   } else{
 
@@ -321,7 +332,10 @@ bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1,mainweights=NULL,a
     C  <- as.matrix(rbind(mw* maindat[,comvar], aw* auxdat[,comvar]))
     IC <- as.matrix(rbind(mw*Imaindat[,comvar], aw*Iauxdat[,comvar]))
 
-    A3 <- (t(C)%*%C)/(t(IC)%*%IC)
+    C2  <- as.matrix(rbind( maindat[,comvar],  auxdat[,comvar]))
+    IC2 <- as.matrix(rbind(Imaindat[,comvar], Iauxdat[,comvar]))
+
+    A3 <- (t(C)%*%C2)/(t(IC)%*%IC2)
 
   }
 

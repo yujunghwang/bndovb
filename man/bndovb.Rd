@@ -25,16 +25,16 @@ bndovb(
 
 \item{ovar}{A name of an omitted variable in main dataset which exists in auxiliary data}
 
-\item{comvar}{A vector of common regressors existing in both main data and auxiliary data}
+\item{comvar}{A vector of the names of common regressors existing in both main data and auxiliary data}
 
 \item{method}{CDF and Quantile function estimation method.
 Users can choose either 1 or 2. If the method is 1, the CDF and quantile function is estimated assuming a parametric normal distribution.
 If the method is 2, the CDF and quantile function is estimated using a nonparaemtric estimator in Li and Racine(2008) \doi{10.1198/073500107000000250}, Li, Lin, and Racine(2013) \doi{10.1080/07350015.2012.738955}.
 Default is 1.}
 
-\item{mainweights}{An optional weight vector for the main dataset. The vector length must be equal to the number of rows of 'maindat'}
+\item{mainweights}{An optional weight vector for the main dataset. The length must be equal to the number of rows of 'maindat'.}
 
-\item{auxweights}{An optional weight vector for the auxiliary dataset. The vector length must be equal to the number of rows of 'auxdat'}
+\item{auxweights}{An optional weight vector for the auxiliary dataset. The length must be equal to the number of rows of 'auxdat'.}
 
 \item{signres}{An option to impose a sign restriction on a coefficient of an omitted variable. Set either NULL or pos or neg.
 Default is NULL. If NULL, there is no sign restriction.

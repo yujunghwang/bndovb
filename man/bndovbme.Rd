@@ -35,9 +35,9 @@ When proxy variables are discrete, the first proxy variable is used for initiali
 
 \item{sbar}{A cardinality of the support of the discrete proxy variables. Default is 2. If proxy variables are continuous, this variable is irrelevant.}
 
-\item{mainweights}{An optional weight vector for the main dataset. The vector length must be equal to the number of rows of 'maindat'}
+\item{mainweights}{An optional weight vector for the main dataset. The length must be equal to the number of rows of 'maindat'.}
 
-\item{auxweights}{An optional weight vector for the auxiliary dataset. The vector length must be equal to the number of rows of 'auxdat'}
+\item{auxweights}{An optional weight vector for the auxiliary dataset. The length must be equal to the number of rows of 'auxdat'.}
 
 \item{normalize}{Whether to normalize the omitted variable to have mean 0 and standard deviation 1. Set TRUE or FALSE.
 Default is TRUE. If FALSE, then the scale of the omitted variable is anchored with the first proxy variable in pvar list.}

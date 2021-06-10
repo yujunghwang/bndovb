@@ -24,8 +24,8 @@
 #' @param ptype Either 1 (continuous) or 2 (discrete). Whether proxy variables are continuous or discrete. Default is 1 (continuous).
 #' @param comvar A vector of the names of the common regressors existing in both main data and auxiliary data
 #' @param sbar A cardinality of the support of the discrete proxy variables. Default is 2. If proxy variables are continuous, this variable is irrelevant.
-#' @param mainweights An optional weight vector for the main dataset. The vector length must be equal to the number of rows of 'maindat'
-#' @param auxweights An optional weight vector for the auxiliary dataset. The vector length must be equal to the number of rows of 'auxdat'
+#' @param mainweights An optional weight vector for the main dataset. The length must be equal to the number of rows of 'maindat'.
+#' @param auxweights An optional weight vector for the auxiliary dataset. The length must be equal to the number of rows of 'auxdat'.
 #' @param normalize Whether to normalize the omitted variable to have mean 0 and standard deviation 1. Set TRUE or FALSE.
 #' Default is TRUE. If FALSE, then the scale of the omitted variable is anchored with the first proxy variable in pvar list.
 #' @param signres An option to impose a sign restriction on a coefficient of an omitted variable. Set either NULL or pos or neg.
@@ -115,9 +115,9 @@ bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,mainweight
   }
 
   if (!is.null(mainweights)){
-    # check if the weight vector for main data has a correct length
+    # check if the weight vector has right length
     if (length(mainweights)!=dim(maindat)[1]){
-      stop("Incorrect length for the main data weight vector. The length must be equal to the number of rows of 'maindat'.")
+      stop("The length of 'mainweights' is not equal to the number of rows of 'maindat'.")
     }
     # check if any weight vector includes NA or NaN or Inf
     if (sum(is.na(mainweights))>0|sum(is.nan(mainweights))>0|sum(is.infinite(mainweights))>0){
@@ -126,16 +126,15 @@ bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,mainweight
   }
 
   if (!is.null(auxweights)){
-    # check if the weight vector for auxiliary data has a correct length
+    # check if the weight variable is included in the auxdat
     if (length(auxweights)!=dim(auxdat)[1]){
-      stop("Incorrect length for the auxiliary data weight vector. The length must be equal to the number of rows of 'auxdat'.")
+      stop("The length of 'auxweights' is not equal to the number of rows of 'auxdat'.")
     }
     # check if any weight vector includes NA or NaN or Inf
     if (sum(is.na(auxweights))>0|sum(is.nan(auxweights))>0|sum(is.infinite(auxweights))>0){
       stop("auxweights vector can not include any NAs or NaNs or Infs.")
     }
   }
-
   if (!is.null(signres)){
     if (signres!="pos" & signres!="neg"){
       stop("signres must be either NULL or pos or neg.")
@@ -158,6 +157,10 @@ bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,mainweight
   # leave only necessary variables and make the order of variables consistent
   maindat <- maindat[,c(depvar,comvar)]
   auxdat <- auxdat[,c(pvar,comvar)]
+
+  # add a weight vector to use 'lm' later
+  maindat$mainweights <- mainweights
+  auxdat$auxweights   <- auxweights
 
   # number of regressors in a regrssion model (assuming there is only one omitted variable)
   nr <- length(comvar)+1
@@ -266,7 +269,8 @@ bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,mainweight
     if (is.null(auxweights)){
       oout2 <- lm(formula=f2,data=sdat) ## regression without intercept because of "con" in "comvar"
     } else{
-      oout2 <- lm(formula=f2,data=sdat,weights=auxweights) ## regression without intercept because of "con" in "comvar"
+      sdat$weights <- rep(auxweights,np)
+      oout2 <- lm(formula=f2,data=sdat,weights=weights) ## regression without intercept because of "con" in "comvar"
     }
 
     # prediction in main data, not auxiliary data
@@ -420,25 +424,31 @@ bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,mainweight
     C  <- as.matrix(rbind( maindat[,comvar], auxdat[,comvar]))
     IC <- as.matrix(rbind(Imaindat[,comvar],Iauxdat[,comvar]))
 
-    A3 <- (t(C)%*%C)/(t(IC)%*%IC) ## main data and auxiliary data weight
+    A3 <- (t(C)%*%C)/(t(IC)%*%IC)
 
-  } else if (!is.null(auxweights) & is.null(mainweights)){
+  } else if(!is.null(auxweights) & is.null(mainweights)){
 
     aw <- matrix(rep(auxweights, length(comvar)),ncol=length(comvar)) *(1/sum(auxweights)) * Na
 
-    C  <- as.matrix(rbind( maindat[,comvar],aw* auxdat[,comvar]))
-    IC <- as.matrix(rbind(Imaindat[,comvar],aw*Iauxdat[,comvar]))
+    C   <- as.matrix(rbind( maindat[,comvar],aw* auxdat[,comvar]))
+    IC  <- as.matrix(rbind(Imaindat[,comvar],aw*Iauxdat[,comvar]))
 
-    A3 <- (t(C)%*%C)/(t(IC)%*%IC) ## main data and auxiliary data weight
+    C2  <- as.matrix(rbind( maindat[,comvar], auxdat[,comvar]))
+    IC2 <- as.matrix(rbind(Imaindat[,comvar],Iauxdat[,comvar]))
 
-  } else if (is.null(auxweights) & !is.null(mainweights)){
+    A3 <- (t(C)%*%C2)/(t(IC)%*%IC2)
+
+  } else if(is.null(auxweights) & !is.null(mainweights)){
 
     mw <- matrix(rep(mainweights,length(comvar)),ncol=length(comvar)) *(1/sum(mainweights)) * Nm
 
     C  <- as.matrix(rbind(mw* maindat[,comvar],  auxdat[,comvar]))
     IC <- as.matrix(rbind(mw*Imaindat[,comvar], Iauxdat[,comvar]))
 
-    A3 <- (t(C)%*%C)/(t(IC)%*%IC) ## main data and auxiliary data weight
+    C2  <- as.matrix(rbind( maindat[,comvar],  auxdat[,comvar]))
+    IC2 <- as.matrix(rbind(Imaindat[,comvar], Iauxdat[,comvar]))
+
+    A3 <- (t(C)%*%C2)/(t(IC)%*%IC2)
 
   } else{
 
@@ -448,7 +458,10 @@ bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,mainweight
     C  <- as.matrix(rbind(mw* maindat[,comvar], aw* auxdat[,comvar]))
     IC <- as.matrix(rbind(mw*Imaindat[,comvar], aw*Iauxdat[,comvar]))
 
-    A3 <- (t(C)%*%C)/(t(IC)%*%IC) ## main data and auxiliary data weight
+    C2  <- as.matrix(rbind( maindat[,comvar],  auxdat[,comvar]))
+    IC2 <- as.matrix(rbind(Imaindat[,comvar], Iauxdat[,comvar]))
+
+    A3 <- (t(C)%*%C2)/(t(IC)%*%IC2)
 
   }
 
