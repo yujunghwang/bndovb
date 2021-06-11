@@ -10,8 +10,8 @@
 #' @importFrom pracma pinv eye
 #' @importFrom MASS mvrnorm
 #'
-#' @param maindat Main data set
-#' @param auxdat Auxiliary data set
+#' @param maindat Main data set. It must be a data frame.
+#' @param auxdat Auxiliary data set. It must be a data frame.
 #' @param depvar A name of a dependent variable in main dataset
 #' @param ovar A name of an omitted variable in main dataset which exists in auxiliary data
 #' @param comvar A vector of the names of common regressors existing in both main data and auxiliary data
@@ -51,12 +51,12 @@ bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1,mainweights=NULL,a
   # check if inputs are there in a correct form
   #############
 
-  if (!is.matrix(maindat) & !is.data.frame(maindat)){
-    stop("please provide main data in either matrix or data frame format.")
+  if (!is.data.frame(maindat)){
+    stop("please provide main data in a data frame format.")
   }
 
-  if (!is.matrix(auxdat) & !is.data.frame(auxdat)){
-    stop("please provide auxiliary data in either matrix or data frame format.")
+  if (!is.data.frame(auxdat)){
+    stop("please provide auxiliary data in a data frame format.")
   }
 
   # check if column names of auxiliary data exists
@@ -359,10 +359,11 @@ bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1,mainweights=NULL,a
 
 
   if (!is.null(signres)){
+
     if (signres=="pos" & (hat_beta_l[1]<0)){
       # solve the inverse problem
       M <- pinv(XX)
-      mu_zero <- -(M[1,2:nr]%*%B)/M[1,1]
+      mu_zero <- -(M[1,2:nr]%*%matrix(B,ncol=1))/M[1,1]
 
       if (M[1,1]<0){
         mu_u <- mu_zero
@@ -386,7 +387,7 @@ bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1,mainweights=NULL,a
     if (signres=="neg" & (hat_beta_u[1]>0)){
       # solve the inverse problem
       M <- pinv(XX)
-      mu_zero <- -(M[1,2:nr]%*%B)/M[1,1]
+      mu_zero <- -(M[1,2:nr]%*%matrix(B,ncol=1))/M[1,1]
 
       if (M[1,1]<0){
         mu_l <- mu_zero

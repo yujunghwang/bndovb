@@ -17,9 +17,9 @@ bndovb(
 )
 }
 \arguments{
-\item{maindat}{Main data set}
+\item{maindat}{Main data set. It must be a data frame.}
 
-\item{auxdat}{Auxiliary data set}
+\item{auxdat}{Auxiliary data set. It must be a data frame.}
 
 \item{depvar}{A name of a dependent variable in main dataset}
 

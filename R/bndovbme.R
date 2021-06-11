@@ -15,8 +15,8 @@
 #' @import factormodel
 #' @importFrom nnet multinom
 #'
-#' @param maindat Main data set
-#' @param auxdat Auxiliary data set
+#' @param maindat Main data set. It must be a data frame.
+#' @param auxdat Auxiliary data set. It must be a data frame.
 #' @param depvar A name of a dependent variable in main dataset
 #' @param pvar A vector of the names of the proxy variables for the omitted variable.
 #' When proxy variables are continuous, the first proxy variable is used as an anchoring variable.
@@ -67,12 +67,12 @@ bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,mainweight
   # check if inputs are there in a correct form
   #############
 
-  if (!is.matrix(maindat) & !is.data.frame(maindat)){
-    stop("please provide main data in either matrix or data frame format.")
+  if (!is.data.frame(maindat)){
+    stop("please provide main data in a data frame format.")
   }
 
-  if (!is.matrix(auxdat) & !is.data.frame(auxdat)){
-    stop("please provide auxiliary data in either matrix or data frame format.")
+  if (!is.data.frame(auxdat)){
+    stop("please provide auxiliary data in a data frame format.")
   }
 
   # check if column names of auxiliary data exists
