@@ -42,10 +42,14 @@ If 'pos', the estimator imposes an extra restriction that the coefficient of an 
 If 'neg', the estimator imposes an extra restriction that the coefficient of an omitted variable must be negative.}
 }
 \value{
-Returns a list of 2 components : \describe{
+Returns a list of 4 components : \describe{
 \item{hat_beta_l}{lower bound estimates of regression coefficients}
 
-\item{hat_beta_u}{upper bound estimates of regression coefficients}}
+\item{hat_beta_u}{upper bound estimates of regression coefficients}
+
+\item{mu_l}{lower bound estimate of E[ovar*depvar]}
+
+\item{mu_u}{upper bound estimate of E[ovar*depvar]}}
 }
 \description{
 This function runs a two sample least squares when auxiliary data contains every right-hand side regressor

@@ -26,10 +26,14 @@
 #' If 'pos', the estimator imposes an extra restriction that the coefficient of an omitted variable must be positive.
 #' If 'neg', the estimator imposes an extra restriction that the coefficient of an omitted variable must be negative.
 #'
-#' @return Returns a list of 2 components : \describe{
+#' @return Returns a list of 4 components : \describe{
 #' \item{hat_beta_l}{lower bound estimates of regression coefficients}
 #'
-#' \item{hat_beta_u}{upper bound estimates of regression coefficients}}
+#' \item{hat_beta_u}{upper bound estimates of regression coefficients}
+#'
+#' \item{mu_l}{lower bound estimate of E\[ovar*depvar\]}
+#'
+#' \item{mu_u}{upper bound estimate of E\[ovar*depvar\]}}
 #'
 #' @examples
 #' data(maindat_nome)
@@ -414,5 +418,5 @@ bndovb <- function(maindat,auxdat,depvar,ovar,comvar,method=1,mainweights=NULL,a
   hat_beta_l <- c(hat_beta_l[,"con"],hat_beta_l[,ovar],hat_beta_l[,comvar2])
   hat_beta_u <- c(hat_beta_u[,"con"],hat_beta_u[,ovar],hat_beta_u[,comvar2])
 
-  return(list(hat_beta_l=hat_beta_l,hat_beta_u=hat_beta_u))
+  return(list(hat_beta_l=hat_beta_l,hat_beta_u=hat_beta_u,mu_l=mu_l,mu_u=mu_u))
 }
