@@ -286,7 +286,7 @@ bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,mainweight
 
     varNoNA <- function(x) var(x,na.rm=TRUE)
     res <- sdat[,"y"] - as.matrix(sdat[,comvar])%*%Fopar
-    osd <- mean(sqrt(apply(matrix(res,ncol=np),2,varNoNA)-(nsdnu)^2))
+    osd <- mean(sqrt(pmax(apply(matrix(res,ncol=np),2,varNoNA)-(nsdnu)^2,0.01)))
 
     #############
     # compute bounds of E[(depvar)*(omitted variable)]
