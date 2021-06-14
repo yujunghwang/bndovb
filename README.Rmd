@@ -12,6 +12,11 @@ knitr::opts_chunk$set(
 )
 ```
 
+## Citation
+Please cite the following paper if you use this package.
+
+* [Hwang, Yujung, Bounding Omitted Variable Bias Using Auxiliary Data. Available at SSRN.](https://ssrn.com/abstract=3866876)
+
 ## Introduction
 The R package **bndovb** implements a Hwang(2021) estimator to bound omitted variable bias using auxiliary data. The basic assumption is that the main data includes a dependent variable and every regressor but one omitted variable. So there is an omitted variable bias in the OLS result from the main data. However, if there is auxiliary data that includes every right-hand side regressor (or its noisy proxies), it can bound the omitted variable bias. Hwang(2021) provides a more general estimator for when there is more than one omitted variable and when the auxiliary data does not contain every right-hand side regressor (or its noisy proxies).
 
@@ -47,8 +52,8 @@ library(bndovb)
 library(MASS)
 
 # sample size
-Nm <- 100000 # main data
-Na <- 50000 # auxiliary data
+Nm <- 5000 # main data
+Na <- 5000 # auxiliary data
 
 # use same DGP in maindat and auxdat
 maindat <- mvrnorm(Nm,mu=c(2,3,1),Sigma=rbind(c(2,1,1),c(1,2,1),c(1,1,2)))
@@ -233,7 +238,7 @@ This vignette showed how to use functions in `bndovb' R package.
 
 * [Hayfield, Tristen, and Jeffrey S. Racine. "Nonparametric econometrics: The np package." Journal of statistical software 27, no. 5 (2008): 1-32.](https://doi.org/10.18637/jss.v027.i05)
 
-* [Hwang, Yujung (2021). Bounding Omitted Variable Bias Using Auxiliary Data. Working Paper.](https://sites.google.com/view/yujunghwang/research?authuser=0)
+* [Hwang, Yujung, Bounding Omitted Variable Bias Using Auxiliary Data. Available at SSRN:](https://ssrn.com/abstract=3866876)
 
 * [Li, Qi, and Jeffrey S. Racine. "Nonparametric estimation of conditional CDF and quantile functions with mixed categorical and continuous data." Journal of Business & Economic Statistics 26, no. 4 (2008): 423-434.](https://www.tandfonline.com/doi/abs/10.1198/073500107000000250?casa_token=tUdlEvmt_fMAAAAA:IALIN23XRN8bpnL0ZBEQp8MIUO9Ie_SkHzdBTBVa-DD1oYaxdqaqrr_EyBD7IMKjxmXIanGfHIBW)
 

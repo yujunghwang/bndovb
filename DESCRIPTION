@@ -7,7 +7,7 @@ Authors@R:
            role = c("aut", "cre"),
            email = "yujungghwang@gmail.com",
            comment = c(ORCID = "https://orcid.org/0000-0002-8136-8987"))
-Description: Functions to implement a Hwang(2021) estimator, which bounds an omitted 		variable bias using auxiliary data.
+Description: Functions to implement a Hwang(2021) estimator, which bounds an omitted variable bias using auxiliary data.
 License: GPL-3
 Encoding: UTF-8
 LazyData: true

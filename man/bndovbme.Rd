@@ -83,7 +83,7 @@ bndovbme(maindat=maindat_medisc,auxdat=auxdat_medisc,depvar="y",pvar=pvar,ptype=
 }
 \references{
 \describe{
-\item{Hwang, Yujung (2021)}{Bounding Omitted Variable Bias Using Auxiliary Data. Working Paper.}}
+\item{Hwang, Yujung (2021)}{Bounding Omitted Variable Bias Using Auxiliary Data. Available at SSRN.}}
 }
 \author{
 Yujung Hwang, \email{yujungghwang@gmail.com}

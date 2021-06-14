@@ -65,7 +65,7 @@ bndovb(maindat=maindat_nome,auxdat=auxdat_nome,depvar="y",ovar="x1",comvar=c("x2
 }
 \references{
 \describe{
-\item{Hwang, Yujung (2021)}{Bounding Omitted Variable Bias Using Auxiliary Data. Working Paper.}}
+\item{Hwang, Yujung (2021)}{Bounding Omitted Variable Bias Using Auxiliary Data. Available at SSRN.}}
 }
 \author{
 Yujung Hwang, \email{yujungghwang@gmail.com}

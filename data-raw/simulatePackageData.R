@@ -6,8 +6,8 @@ library(usethis)
 set.seed(210601)
 
 # sample size
-Nm <- 100000 # main data
-Na <- 50000 # auxiliary data
+Nm <- 5000 # main data
+Na <- 5000 # auxiliary data
 
 ## Example data for a function 'bndovb'
 # use same DGP in maindat and auxdat

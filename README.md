@@ -3,6 +3,13 @@ bndovb
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
+## Citation
+
+Please cite the following paper if you use this package.
+
+  - [Hwang, Yujung, Bounding Omitted Variable Bias Using Auxiliary Data.
+    Available at SSRN.](https://ssrn.com/abstract=3866876)
+
 ## Introduction
 
 The R package **bndovb** implements a Hwang(2021) estimator to bound
@@ -73,33 +80,11 @@ coefficients by using both main data and auxiliary data.
 
 ``` r
 library(bndovb)
-#> Warning: replacing previous import 'MASS::select' by 'dplyr::select' when
-#> loading 'bndovb'
-#> Warning: replacing previous import 'maxLik::gradient' by 'pracma::gradient' when
-#> loading 'bndovb'
-#> Warning: replacing previous import 'maxLik::hessian' by 'pracma::hessian' when
-#> loading 'bndovb'
-#> Warning: replacing previous import 'dplyr::filter' by 'stats::filter' when
-#> loading 'bndovb'
-#> Warning: replacing previous import 'dplyr::lag' by 'stats::lag' when loading
-#> 'bndovb'
 library(MASS)
-library(dplyr)
-#> 
-#> Attaching package: 'dplyr'
-#> The following object is masked from 'package:MASS':
-#> 
-#>     select
-#> The following objects are masked from 'package:stats':
-#> 
-#>     filter, lag
-#> The following objects are masked from 'package:base':
-#> 
-#>     intersect, setdiff, setequal, union
 
 # sample size
-Nm <- 100000 # main data
-Na <- 50000 # auxiliary data
+Nm <- 5000 # main data
+Na <- 5000 # auxiliary data
 
 # use same DGP in maindat and auxdat
 maindat <- mvrnorm(Nm,mu=c(2,3,1),Sigma=rbind(c(2,1,1),c(1,2,1),c(1,1,2)))
@@ -125,12 +110,18 @@ maindat <- maindat[,c("x2","x3","y")]
 oout <- bndovb(maindat=maindat,auxdat=auxdat,depvar="y",ovar="x1",comvar=c("x2","x3"),method=1)
 print(oout)
 #> $hat_beta_l
-#>       con        x1        x2        x3 
-#>  2.007466 -1.053107  3.019898  2.002953 
+#>        con         x1         x2         x3 
+#>  1.7790244 -0.9855933  3.1338687  1.8429302 
 #> 
 #> $hat_beta_u
 #>       con        x1        x2        x3 
-#> 3.3280726 0.9589262 3.6943861 2.6797727
+#> 3.0589393 0.9853929 3.7718412 2.5794515 
+#> 
+#> $mu_l
+#> [1] 34.59614
+#> 
+#> $mu_u
+#> [1] 37.26466
 
 # use "bndovb" function using nonparametric estimation of the CDF and quantile function (set method=2)
 # for nonparametric density estimator, the R package "np" was used. See Hayfield and Racine (2008), Li and Racine (2008), Li, Lin and Racine (2013)
@@ -146,10 +137,8 @@ data does not contain the omitted variable but contain continuous proxy
 variables for the omitted variable. The code may take some time to run.
 
 ``` r
-
 library(bndovb)
 library(MASS)
-library(dplyr)
 library(pracma)
 
 set.seed(210413)
@@ -203,15 +192,21 @@ auxdat <- data.frame(x=x_b,w1=w1_b,z1=z_b[,1],z2=z_b[,2],z3=z_b[,3])
 
 
 # use 'bndovbme' function
-oout <- bndovbme(maindat=maindat,auxdat=auxdat,depvar=c("y"),pvar=c("z1","z2","z3"),ptype=1,comvar=c("x","w1"))
+oout <- bndovbme(maindat=maindat,auxdat=auxdat,depvar=c("y"),pvar=c("z1","z2","z3"),ptype=1,comvar=c("x","w1"),normalize=FALSE)
 print(oout)
 #> $hat_beta_l
 #>        con       ovar          x         w1 
-#> -0.1088494 -1.8486753  0.5523880 -0.4145403 
+#> -0.1088779 -1.8499939  0.5519592 -0.4152109 
 #> 
 #> $hat_beta_u
 #>        con       ovar          x         w1 
-#> 0.01424201 1.72849667 2.39952764 1.40476280
+#> 0.01428739 1.72932693 2.40020851 1.40518506 
+#> 
+#> $mu_l
+#> [1] 0.5594916
+#> 
+#> $mu_u
+#> [1] 2.309199
 ```
 
 ## Example 3 : bndovbme (discrete proxy variables)
@@ -221,10 +216,8 @@ variables in auxiliary data are discrete. The code may take some time to
 run.
 
 ``` r
-
 library(bndovb)
 library(MASS)
-library(dplyr)
 library(pracma)
 
 set.seed(210413)
@@ -287,7 +280,7 @@ maindat <- data.frame(y=y_a,x=x_a,w1=w1_a)
 auxdat <- data.frame(x=x_b,w1=w1_b,z1=z_b[,1],z2=z_b[,2],z3=z_b[,3])
 
 # use 'bndovbme' function
-oout <- bndovbme(maindat=maindat,auxdat=auxdat,depvar=c("y"),pvar=c("z1","z2","z3"),ptype=2,comvar=c("x","w1"),sbar=2)
+oout <- bndovbme(maindat=maindat,auxdat=auxdat,depvar=c("y"),pvar=c("z1","z2","z3"),ptype=2,comvar=c("x","w1"),sbar=2,normalize=FALSE)
 print(oout)
 #> $hat_beta_l
 #>        con       ovar          x         w1 
@@ -295,7 +288,13 @@ print(oout)
 #> 
 #> $hat_beta_u
 #>      con     ovar        x       w1 
-#> 4.453464 1.766742 1.426545 1.269087
+#> 4.453464 1.766742 1.426545 1.269087 
+#> 
+#> $mu_l
+#> [1] 2.240954
+#> 
+#> $mu_u
+#> [1] 2.99594
 ```
 
 ## Conclusion
@@ -308,9 +307,8 @@ This vignette showed how to use functions in \`bndovb’ R package.
     econometrics: The np package.” Journal of statistical software 27,
     no. 5 (2008): 1-32.](https://doi.org/10.18637/jss.v027.i05)
 
-  - [Hwang, Yujung (2021). Bounding Omitted Variable Bias Using
-    Auxiliary Data. Working
-    Paper.](https://sites.google.com/view/yujunghwang/research?authuser=0)
+  - [Hwang, Yujung, Bounding Omitted Variable Bias Using Auxiliary Data.
+    Available at SSRN:](https://ssrn.com/abstract=3866876)
 
   - [Li, Qi, and Jeffrey S. Racine. “Nonparametric estimation of
     conditional CDF and quantile functions with mixed categorical and
