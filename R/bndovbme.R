@@ -7,7 +7,7 @@
 #' When the omitted variable is discrete, the auxiliary data must contain at least three continuous proxy variables.
 #' @author Yujung Hwang, \email{yujungghwang@gmail.com}
 #' @references \describe{
-#' \item{Hwang, Yujung (2021)}{Bounding Omitted Variable Bias Using Auxiliary Data. Available at SSRN.}}
+#' \item{Hwang, Yujung (2021)}{Bounding Omitted Variable Bias Using Auxiliary Data. Available at SSRN. \doi{10.2139/ssrn.3866876}}}
 #' @importFrom utils install.packages
 #' @import stats
 #' @importFrom pracma pinv eye

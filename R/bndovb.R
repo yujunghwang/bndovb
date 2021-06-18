@@ -3,7 +3,7 @@
 #' and main data contains a dependent variable and every right-hand side regressor but one omitted variable.
 #' @author Yujung Hwang, \email{yujungghwang@gmail.com}
 #' @references \describe{
-#' \item{Hwang, Yujung (2021)}{Bounding Omitted Variable Bias Using Auxiliary Data. Available at SSRN.}}
+#' \item{Hwang, Yujung (2021)}{Bounding Omitted Variable Bias Using Auxiliary Data. Available at SSRN.\doi{10.2139/ssrn.3866876}}}
 #' @importFrom utils install.packages
 #' @import stats
 #' @import np
