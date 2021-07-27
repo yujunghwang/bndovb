@@ -1,6 +1,6 @@
 Package: bndovb
 Title: Bounding Omitted Variable Bias Using Auxiliary Data
-Version: 1.0
+Version: 1.1
 Authors@R: 
     person(given = "Yujung",
            family = "Hwang",

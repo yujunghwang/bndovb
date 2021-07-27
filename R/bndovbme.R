@@ -334,8 +334,33 @@ bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,mainweight
     ovar_m_l <- rep(NA,Nm)
     ovar_m_u <- rep(NA,Nm)
 
+    # discrete
+    typemat <- t(matrix(rep(c(1:sbar),dim(typeprob)[1]),ncol=dim(typeprob)[1]))
+
+    if (is.null(auxweights)){
+      mtheta <- mean(apply(typeprob*typemat,1,sum),na.rm=TRUE)
+      vartheta <- mean(apply(typeprob*(typemat^2),1,sum),na.rm=TRUE) - mtheta^2
+    } else{
+      mtheta <- weighted.mean(x=apply(typeprob*typemat,1,sum),w=auxweights,na.rm=TRUE)
+      vartheta <- weighted.mean(x=apply(typeprob*(typemat-mtheta)^2,1,sum),w=auxweights,na.rm=TRUE)
+    }
+
     if (normalize==TRUE){
-      ogrid <- (c(1:sbar)-mean(c(1:sbar)))/sd(c(1:sbar))
+      # fix normalization
+      ogrid <- (c(1:sbar)-mtheta)/sqrt(vartheta)
+
+      typemat <- t(matrix(rep(ogrid,dim(typeprob)[1]),ncol=dim(typeprob)[1]))
+
+      # normalized mean and var, close to 0 and 1
+      if (is.null(auxweights)){
+        mtheta <- mean(apply(typeprob*typemat,1,sum),na.rm=TRUE)
+        vartheta <- mean(apply(typeprob*(typemat^2),1,sum),na.rm=TRUE) - mtheta^2
+      } else{
+        mtheta <- weighted.mean(x=apply(typeprob*typemat,1,sum),w=auxweights,na.rm=TRUE)
+        vartheta <- weighted.mean(x=apply(typeprob*(typemat-mtheta)^2,1,sum),w=auxweights,na.rm=TRUE)
+      }
+
+
     } else{
       ogrid <- c(1:sbar)
     }
@@ -401,13 +426,7 @@ bndovbme <- function(maindat,auxdat,depvar,pvar,ptype=1,comvar,sbar=2,mainweight
     }
   } else if (ptype==2){
 
-    meanNoNA <- function(x){
-      return(mean(x,na.rm=TRUE))
-    }
-
-    # discrete
-    iprob <- apply(typeprob,2,meanNoNA)
-    A1 <- sum((ogrid^2)*iprob)
+    A1 <- vartheta + mtheta^2
     A2 <- matrix(0,nrow=1,ncol=nc)
     for (k in 1:nc){
       temp <- 0

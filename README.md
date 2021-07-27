@@ -8,7 +8,7 @@ bndovb
 Please cite the following paper if you use this package.
 
   - [Hwang, Yujung, Bounding Omitted Variable Bias Using Auxiliary Data.
-    Available at SSRN.](https://ssrn.com/abstract=3866876)
+    Available at SSRN.](https://www.ssrn.com/abstract=3866876)
 
 ## Introduction
 
@@ -111,17 +111,17 @@ oout <- bndovb(maindat=maindat,auxdat=auxdat,depvar="y",ovar="x1",comvar=c("x2",
 print(oout)
 #> $hat_beta_l
 #>        con         x1         x2         x3 
-#>  1.7790244 -0.9855933  3.1338687  1.8429302 
+#>  1.8277099 -0.7843462  3.0145152  1.9318175 
 #> 
 #> $hat_beta_u
-#>       con        x1        x2        x3 
-#> 3.0589393 0.9853929 3.7718412 2.5794515 
+#>      con       x1       x2       x3 
+#> 3.164502 1.143567 3.633396 2.594093 
 #> 
 #> $mu_l
-#> [1] 34.59614
+#> [1] 34.37488
 #> 
 #> $mu_u
-#> [1] 37.26466
+#> [1] 36.97911
 
 # use "bndovb" function using nonparametric estimation of the CDF and quantile function (set method=2)
 # for nonparametric density estimator, the R package "np" was used. See Hayfield and Racine (2008), Li and Racine (2008), Li, Lin and Racine (2013)
@@ -308,7 +308,7 @@ This vignette showed how to use functions in \`bndovb’ R package.
     no. 5 (2008): 1-32.](https://doi.org/10.18637/jss.v027.i05)
 
   - [Hwang, Yujung, Bounding Omitted Variable Bias Using Auxiliary Data.
-    Available at SSRN:](https://ssrn.com/abstract=3866876)
+    Available at SSRN:](https://www.ssrn.com/abstract=3866876)
 
   - [Li, Qi, and Jeffrey S. Racine. “Nonparametric estimation of
     conditional CDF and quantile functions with mixed categorical and
