@@ -48,7 +48,6 @@ devtools::install_github("yujunghwang/bndovb")
 The below example shows how to use a function 'bndovb' when the auxiliary data contain the omitted variable from main data without any measurement error. The code first simulates fake data using the same DGP in both main data and auxiliary data. Next, the main data omits one variable. The function 'bndovb' provides a bound on regression coefficients by using both main data and auxiliary data.
 
 ```{r}
-library(bndovb)
 library(MASS)
 
 # sample size
@@ -94,7 +93,6 @@ print(oout)
 The code below shows how to use a function 'bndovbme' when the auxiliary data does not contain the omitted variable but contain continuous proxy variables for the omitted variable. The code may take some time to run.
 
 ```{r}
-library(bndovb)
 library(MASS)
 library(pracma)
 
@@ -161,7 +159,6 @@ print(oout)
 The code below is similar to the Example 2 but assumes the proxy variables in auxiliary data are discrete. The code may take some time to run.
 
 ```{r}
-library(bndovb)
 library(MASS)
 library(pracma)
 
