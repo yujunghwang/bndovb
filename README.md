@@ -54,6 +54,28 @@ proxy variables are continuous, the auxiliary data must contain at least
 2 proxy variables. When proxy variables are discrete, the auxiliary data
 must contain at least 3 proxy variables.
 
+To compute the equal-tailed confidence interval, set the option
+‘ci=TRUE’ when using the ‘bndovb’ or ‘bndovbme’ function. The
+functions compute the confidence interval using the Hong and Li (2018)
+numerical delta method. The default nominal coverage rate is (1-tau) =
+0.95 and the default number of bootstrap draws is 100. The default
+tuning parameter for the numerical delta method is set to ‘scale=-1/2’,
+which makes the bootstrap standard one. You can change any of these by
+choosing a different option. See the documentation for ‘bndovb’ and
+‘bndovbme’ function.
+
+To choose the optimal tuning parameter ‘scale’, use ‘bndovb\_tuning’ and
+‘bndovbme\_tuning’ function. These functions implement the double
+bootstrap described in Hong and Li (2020). The default scale grid to
+search for an optimal scale is c(-1/2,-1/3,-1/4,-1/5,-1/6), which you
+can change by setting a different option. The default nominal coverage
+rate is (1-tau)=0.95 and the default number of bootstrap draws is 100.
+In double bootstrap, this means the number of the first draws is 100 and
+the number of second draws conditional on each first draw is 100. By
+default, the double bootstrap will be performed in parallel. If you want
+to compute serially, choose ‘parallel=FALSE’. See the documentation for
+‘bndovb\_tuning’ and ‘bndovbme\_tuning’ function.
+
 ## Installation
 
 You can install a package **bndovb** using either CRAN or github.
@@ -79,8 +101,8 @@ variable. The function ‘bndovb’ provides a bound on regression
 coefficients by using both main data and auxiliary data.
 
 ``` r
-library(bndovb)
 library(MASS)
+library(bndovb)
 
 # sample size
 Nm <- 5000 # main data
@@ -108,41 +130,45 @@ maindat <- maindat[,c("x2","x3","y")]
 # use "bndovb" function assuming parametric "normal" distribution for the CDF and quantile function (set method=1)
 # see Hwang(2021) for further details
 oout <- bndovb(maindat=maindat,auxdat=auxdat,depvar="y",ovar="x1",comvar=c("x2","x3"),method=1)
+#> [1] "If you want to compute an equal-tailed confidence interval using a numerical delta method, set ci=TRUE instead. Default is 95% CI. If you want a different coverage, set a different tau."
 print(oout)
 #> $hat_beta_l
 #>       con        x1        x2        x3 
-#>  2.429521 -1.194230  3.024428  1.827867 
+#>  2.159940 -1.097541  3.051552  1.818566 
 #> 
 #> $hat_beta_u
 #>       con        x1        x2        x3 
-#> 3.6890869 0.8168218 3.7074669 2.5989086 
+#> 3.4754586 0.9482145 3.7202134 2.5578865 
 #> 
 #> $mu_l
-#> [1] 34.75199
+#> [1] 34.17696
 #> 
 #> $mu_u
-#> [1] 37.42925
+#> [1] 36.82752
 #> 
-#> $XX
-#>                     x2        x3       con
-#>     6.234823  7.180089 3.1103129 2.0315166
-#> x2  7.180089 11.089210 3.9766499 3.0161249
-#> x3  3.110313  3.976650 2.9671667 0.9931878
-#> con 2.031517  3.016125 0.9931878 1.0000000
+#> $hat_beta_l_cil
+#> NULL
 #> 
-#> $B_l
-#>          [,1]
-#> [1,] 34.75199
-#> [2,] 53.99990
-#> [3,] 22.40422
-#> [4,] 15.02638
+#> $hat_beta_l_ciu
+#> NULL
 #> 
-#> $B_u
-#>          [,1]
-#> [1,] 37.42925
-#> [2,] 53.99990
-#> [3,] 22.40422
-#> [4,] 15.02638
+#> $hat_beta_u_cil
+#> NULL
+#> 
+#> $hat_beta_u_ciu
+#> NULL
+#> 
+#> $mu_l_cil
+#> NULL
+#> 
+#> $mu_l_ciu
+#> NULL
+#> 
+#> $mu_u_cil
+#> NULL
+#> 
+#> $mu_u_ciu
+#> NULL
 
 # use "bndovb" function using nonparametric estimation of the CDF and quantile function (set method=2)
 # for nonparametric density estimator, the R package "np" was used. See Hayfield and Racine (2008), Li and Racine (2008), Li, Lin and Racine (2013)
@@ -158,9 +184,9 @@ data does not contain the omitted variable but contain continuous proxy
 variables for the omitted variable. The code may take some time to run.
 
 ``` r
-library(bndovb)
 library(MASS)
 library(pracma)
+library(bndovb)
 
 set.seed(210413)
 
@@ -214,6 +240,7 @@ auxdat <- data.frame(x=x_b,w1=w1_b,z1=z_b[,1],z2=z_b[,2],z3=z_b[,3])
 
 # use 'bndovbme' function
 oout <- bndovbme(maindat=maindat,auxdat=auxdat,depvar=c("y"),pvar=c("z1","z2","z3"),ptype=1,comvar=c("x","w1"),normalize=FALSE)
+#> [1] "If you want to compute an equal-tailed confidence interval using a numerical delta method, set ci=TRUE instead. Default is 95% CI. If you want a different coverage, set a different tau."
 print(oout)
 #> $hat_beta_l
 #>        con       ovar          x         w1 
@@ -229,26 +256,29 @@ print(oout)
 #> $mu_u
 #> [1] 2.309199
 #> 
-#> $XX
-#>              A1                                    
-#>     1.011211131 1.012930030 0.003618111 0.033946376
-#> x   1.012930030 2.911653876 0.964625016 0.001127328
-#> w1  0.003618111 0.964625016 0.972409548 0.002056657
-#> con 0.033946376 0.001127328 0.002056657 1.000000000
+#> $hat_beta_l_cil
+#> NULL
 #> 
-#> $B_l
-#>             [,1]
-#> [1,]  0.55949163
-#> [2,]  4.71415538
-#> [3,]  1.90488204
-#> [4,] -0.04666132
+#> $hat_beta_l_ciu
+#> NULL
 #> 
-#> $B_u
-#>             [,1]
-#> [1,]  2.30919884
-#> [2,]  4.71415538
-#> [3,]  1.90488204
-#> [4,] -0.04666132
+#> $hat_beta_u_cil
+#> NULL
+#> 
+#> $hat_beta_u_ciu
+#> NULL
+#> 
+#> $mu_l_cil
+#> NULL
+#> 
+#> $mu_l_ciu
+#> NULL
+#> 
+#> $mu_u_cil
+#> NULL
+#> 
+#> $mu_u_ciu
+#> NULL
 ```
 
 ## Example 3 : bndovbme (discrete proxy variables)
@@ -258,9 +288,9 @@ variables in auxiliary data are discrete. The code may take some time to
 run.
 
 ``` r
-library(bndovb)
 library(MASS)
 library(pracma)
+library(bndovb)
 
 set.seed(210413)
 
@@ -323,6 +353,7 @@ auxdat <- data.frame(x=x_b,w1=w1_b,z1=z_b[,1],z2=z_b[,2],z3=z_b[,3])
 
 # use 'bndovbme' function
 oout <- bndovbme(maindat=maindat,auxdat=auxdat,depvar=c("y"),pvar=c("z1","z2","z3"),ptype=2,comvar=c("x","w1"),sbar=2,normalize=FALSE)
+#> [1] "If you want to compute an equal-tailed confidence interval using a numerical delta method, set ci=TRUE instead. Default is 95% CI. If you want a different coverage, set a different tau."
 print(oout)
 #> $hat_beta_l
 #>        con       ovar          x         w1 
@@ -338,26 +369,29 @@ print(oout)
 #> $mu_u
 #> [1] 2.99594
 #> 
-#> $XX
-#>            A1                                      
-#>     2.4981166  0.181838729 0.195603563  1.499372195
-#> x   0.1818387  0.970153863 0.480411698 -0.004117081
-#> w1  0.1956036  0.480411698 0.982046597  0.005307166
-#> con 1.4993722 -0.004117081 0.005307166  1.000000000
+#> $hat_beta_l_cil
+#> NULL
 #> 
-#> $B_l
-#>          [,1]
-#> [1,] 2.240954
-#> [2,] 1.615436
-#> [3,] 1.568143
-#> [4,] 1.486881
+#> $hat_beta_l_ciu
+#> NULL
 #> 
-#> $B_u
-#>          [,1]
-#> [1,] 2.995940
-#> [2,] 1.615436
-#> [3,] 1.568143
-#> [4,] 1.486881
+#> $hat_beta_u_cil
+#> NULL
+#> 
+#> $hat_beta_u_ciu
+#> NULL
+#> 
+#> $mu_l_cil
+#> NULL
+#> 
+#> $mu_l_ciu
+#> NULL
+#> 
+#> $mu_u_cil
+#> NULL
+#> 
+#> $mu_u_ciu
+#> NULL
 ```
 
 ## Conclusion
@@ -366,9 +400,21 @@ This vignette showed how to use functions in \`bndovb’ R package.
 
 ## References
 
+  - [Fang, Zheng, and Andres Santos. “Inference on directionally
+    differentiable functions.” The Review of Economic Studies 86.1
+    (2019): 377-412.](https://doi.org/10.1093/restud/rdy049)
+
   - [Hayfield, Tristen, and Jeffrey S. Racine. “Nonparametric
     econometrics: The np package.” Journal of statistical software 27,
     no. 5 (2008): 1-32.](https://doi.org/10.18637/jss.v027.i05)
+
+  - [Hong, Han, and Jessie Li. “The numerical delta method.” Journal of
+    Econometrics 206.2
+    (2018): 379-394.](https://doi.org/10.1016/j.jeconom.2018.06.007)
+
+  - [Hong, Han, and Jessie Li. “The numerical bootstrap.” The Annals of
+    Statistics 48.1
+    (2020): 397-412.](https://doi.org/10.1214/19-AOS1812)
 
   - [Hwang, Yujung, Bounding Omitted Variable Bias Using Auxiliary Data.
     Available at SSRN:](https://www.ssrn.com/abstract=3866876)
